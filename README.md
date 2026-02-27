@@ -28,7 +28,7 @@ hl wolf run --mock --max-ticks 10
 
 ```
 cli/           CLI commands and trading engine
-  commands/    Subcommand modules (run, dsl, scanner, movers, wolf)
+  commands/    Subcommand modules (run, dsl, scanner, movers, wolf, house)
   hl_adapter.py  Direct HL API adapter (live + mock)
 strategies/    Trading strategy implementations
 modules/       Pure logic modules (zero I/O)
@@ -39,9 +39,11 @@ modules/       Pure logic modules (zero I/O)
   *_config.py        Configuration + presets
   *_state.py         State models + persistence
   *_guard.py         Guard layer (engine + persistence bridge)
+clearing/      Clearing types, ECIES encryption for commit-reveal
+agent/         Agent client — connects to house enclave via HTTP
 skills/        Agent Skills packaging (SKILL.md + runners)
-sdk/           Strategy base class and loader
-common/        Shared data models
+sdk/           Strategy base class, loader, and model registry
+common/        Shared data models and crypto utilities
 parent/        HL API proxy, position tracking, risk management
 tests/         Test suite
 ```
@@ -78,6 +80,10 @@ hl wolf run [options]             # Start WOLF orchestrator
 hl wolf once [options]            # Run a single WOLF tick
 hl wolf status                    # Show WOLF state and positions
 hl wolf presets                   # List WOLF presets
+
+# House — TEE Clearing House Agent
+hl house join <strategy> [--url URL]  # Join a running house enclave
+hl house status [--url URL]           # Show house scoreboard
 ```
 
 ## Strategies
@@ -214,6 +220,38 @@ hl wolf run --preset conservative
 | `default` | 3 | 10x | 170 | $500 |
 | `conservative` | 2 | 5x | 190 | $250 |
 | `aggressive` | 3 | 15x | 150 | $1,000 |
+
+### House — TEE Clearing House Agent
+
+Connect to a running [Tee-work](https://github.com/Nunchi-trade/Tee-work-) house enclave and compete as a market-making agent in commit-reveal clearing rounds.
+
+**How it works:**
+1. Agent registers a strategy (source hash for admission control)
+2. Connects to the house relay via HTTP
+3. Each round: runs strategy → seals orders via ECIES to enclave pubkey → commits hash → reveals ciphertext
+4. House clears all agent orders via supply/demand crossing inside the TEE
+
+```bash
+# Join a house enclave with avellaneda_mm
+hl house join avellaneda_mm --url http://house:8080 --agent-id my-agent
+
+# Register strategy hash before joining
+hl house join avellaneda_mm --url http://house:8080 --register
+
+# Check scoreboard
+hl house status --url http://house:8080
+```
+
+**Commit-reveal protocol:**
+
+| Phase | Agent Action | Description |
+|-------|-------------|-------------|
+| COMMIT | POST /v1/commit | Submit SHA-256(ciphertext) as commitment |
+| REVEAL | POST /v1/reveal | Submit ECIES-encrypted order bundle |
+| CLEARING | (wait) | House decrypts and crosses orders inside TEE |
+| RESULT | GET /v1/result/{round_id} | Fetch fills and KKT certificates |
+
+**Model Registry:** Strategies are hashed via `inspect.getsource()` for reproducibility and admission control. The house can verify that an agent is running an approved strategy version.
 
 ## Custom Strategies
 

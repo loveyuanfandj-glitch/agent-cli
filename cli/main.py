@@ -27,6 +27,7 @@ from cli.commands.dsl import dsl_app
 from cli.commands.scanner import scanner_app
 from cli.commands.movers import movers_app
 from cli.commands.wolf import wolf_app
+from cli.commands.house import house_app
 
 app.command("run", help="Start autonomous trading with a strategy")(run_cmd)
 app.command("status", help="Show positions, PnL, and risk state")(status_cmd)
@@ -37,6 +38,7 @@ app.add_typer(dsl_app, name="dsl", help="Dynamic Stop Loss trailing stop system"
 app.add_typer(scanner_app, name="scanner", help="Opportunity scanner — screen HL perps for setups")
 app.add_typer(movers_app, name="movers", help="Emerging movers — detect assets with capital inflow")
 app.add_typer(wolf_app, name="wolf", help="WOLF strategy — autonomous multi-slot trading")
+app.add_typer(house_app, name="house", help="TEE clearing house — join as agent")
 
 
 def main():
