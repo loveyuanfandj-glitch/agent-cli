@@ -1,6 +1,6 @@
 # YEX Trading Agent CLI
 
-Autonomous trading agent for [Hyperliquid](https://hyperliquid.xyz) perps and [YEX](https://yex.trade) yield markets. Ships with 7 built-in strategies, a Claude-powered LLM agent, and a full autonomous trading stack: Dynamic Stop Loss (DSL), Opportunity Scanner, Emerging Movers detector, and the WOLF multi-slot orchestrator.
+Autonomous trading agent for [Hyperliquid](https://hyperliquid.xyz) perps and [YEX](https://yex.trade) yield markets. Ships with 11 built-in strategies (including 4 powered by the production quoting engine), a Claude-powered LLM agent, and a full autonomous trading stack: Dynamic Stop Loss (DSL), Opportunity Scanner, Emerging Movers detector, and the WOLF multi-slot orchestrator.
 
 Works as a standalone CLI, a **Claude Code skill**, or an **OpenClaw AgentSkill**.
 
@@ -97,6 +97,34 @@ hl house status [--url URL]           # Show house scoreboard
 | `rfq_agent` | Liquidity | Block-size dark RFQ flow |
 | `aggressive_taker` | Directional | Crosses spread with directional bias |
 | `claude_agent` | LLM | Multi-model AI agent (Gemini/Claude/OpenAI) |
+| `engine_mm` | Engine MM | Production quoting engine — composite FV, dynamic spreads, multi-level ladder |
+| `funding_arb` | Funding Arb | Cross-venue funding rate arbitrage — captures funding dislocations |
+| `regime_mm` | Regime MM | Vol-regime adaptive MM — switches behavior by volatility regime |
+| `liquidation_mm` | Liquidation MM | Liquidation flow MM — provides liquidity during cascade events |
+
+### Quoting Engine Strategies
+
+The 4 engine-powered strategies (`engine_mm`, `funding_arb`, `regime_mm`, `liquidation_mm`) wrap the production quoting engine from Tee-work-. They share a common pipeline:
+
+```
+Market Data → Composite Fair Value → Dynamic Spread → Inventory Skew → Multi-Level Ladder → Orders
+              (4-signal blend)       (fee+vol+tox+event)  (price+size)    (exponential decay)
+```
+
+**engine_mm** — Baseline engine wrapper. Composite FV from oracle, external, microprice, and inventory signals. Dynamic spread with vol/toxicity/event components. Multi-level quote ladder with exponential size decay.
+
+**funding_arb** — Captures funding rate dislocations between HL and external venues (Binance, OKX, Bybit). When HL funding diverges from the cross-venue median, biases fair value and quotes asymmetrically to collect the premium. Especially valuable for YEX yield perps.
+
+**regime_mm** — Dynamically adapts quoting to 4 volatility regimes:
+
+| Regime | Spread | Size | Levels | Behavior |
+|--------|--------|------|--------|----------|
+| I_low (calm) | 2-8 bps | 1.5x | 4 | Aggressive, capture spread |
+| II_normal | 5-20 bps | 1.0x | 3 | Standard MM |
+| III_high | 15-40 bps | 0.5x | 2 | Defensive, reduce exposure |
+| IV_extreme | 30-80 bps | 0.2x | 1 | Survival mode |
+
+**liquidation_mm** — Detects liquidation cascades via OI drops. Normal mode: standard quoting. Cascade detected: widens spreads, reduces size on the cascade side, increases size on the contra side to capture forced-seller flow.
 
 ## Autonomous Trading Stack
 

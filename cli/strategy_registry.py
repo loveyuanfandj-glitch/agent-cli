@@ -39,6 +39,26 @@ STRATEGY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "description": "LLM trading agent — Gemini (default) or Claude",
         "params": {"model": "gemini-2.0-flash", "base_size": 0.5},
     },
+    "engine_mm": {
+        "path": "strategies.engine_mm:EngineMMStrategy",
+        "description": "Production quoting engine MM — composite FV, dynamic spreads, multi-level ladder",
+        "params": {"base_size": 1.0, "num_levels": 3},
+    },
+    "funding_arb": {
+        "path": "strategies.funding_arb:FundingArbStrategy",
+        "description": "Cross-venue funding rate arbitrage — captures funding dislocations",
+        "params": {"divergence_threshold_bps": 2.0, "max_bias_bps": 5.0},
+    },
+    "regime_mm": {
+        "path": "strategies.regime_mm:RegimeMMStrategy",
+        "description": "Vol-regime adaptive MM — switches behavior by volatility regime",
+        "params": {"base_size": 1.0},
+    },
+    "liquidation_mm": {
+        "path": "strategies.liquidation_mm:LiquidationMMStrategy",
+        "description": "Liquidation flow MM — provides liquidity during cascade events",
+        "params": {"oi_drop_threshold_pct": 5.0, "cascade_spread_mult": 2.5},
+    },
 }
 
 # YEX market definitions — Nunchi HIP-3 yield perpetuals
