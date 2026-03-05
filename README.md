@@ -25,7 +25,7 @@
 </p>
 
 <p align="center">
-  <a href="https://railway.com/template/TEMPLATE_ID?referralCode=nunchi">
+  <a href="https://railway.com/new/template?template=https://github.com/Nunchi-trade/agent-cli&envs=HL_PRIVATE_KEY,HL_TESTNET,RUN_MODE,WOLF_PRESET&HL_TESTNETDefault=true&RUN_MODEDefault=wolf&WOLF_PRESETDefault=default">
     <img src="https://railway.com/button.svg" alt="Deploy on Railway" height="36" />
   </a>
 </p>
@@ -345,7 +345,7 @@ Fast tools (strategies, builder, wallet, setup) call Python directly — zero su
 
 One-click deploy to run WOLF autonomously in the cloud. No local setup required.
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/TEMPLATE_ID?referralCode=nunchi)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/template?template=https://github.com/Nunchi-trade/agent-cli&envs=HL_PRIVATE_KEY,HL_TESTNET,RUN_MODE,WOLF_PRESET&HL_TESTNETDefault=true&RUN_MODEDefault=wolf&WOLF_PRESETDefault=default)
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
