@@ -332,6 +332,7 @@ class WolfRunner:
                             c4h = self.hl.get_candles(name, "4h", 7 * 24 * 3600 * 1000)
                             c1h = self.hl.get_candles(name, "1h", 48 * 3600 * 1000)
                             asset_candles[name] = {"4h": c4h, "1h": c1h}
+                            time.sleep(0.05)  # Rate limit: ~20 req/s to avoid HL 429s
                         except Exception:
                             pass
 
@@ -449,7 +450,7 @@ class WolfRunner:
             fill = self.hl.place_order(
                 instrument=action.instrument,
                 side=side,
-                size=round(size, 4),
+                size=size,  # adapter rounds to szDecimals
                 price=mid,
                 tif="Ioc",
                 builder=self.builder,

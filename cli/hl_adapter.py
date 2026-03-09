@@ -146,6 +146,20 @@ class DirectHLProxy:
         except Exception:
             return 0.1
 
+    def _get_sz_decimals(self, coin: str) -> int:
+        """Get szDecimals for an asset — number of decimal places for order sizes."""
+        if not hasattr(self, "_sz_decimals_cache"):
+            self._sz_decimals_cache: Dict[str, int] = {}
+            try:
+                meta = self._info.meta()
+                for asset in meta.get("universe", []):
+                    name = asset.get("name", "")
+                    if name:
+                        self._sz_decimals_cache[name] = int(asset.get("szDecimals", 1))
+            except Exception:
+                pass
+        return self._sz_decimals_cache.get(coin, 1)
+
     @staticmethod
     def _round_price(price: float, tick: float = 0.1) -> float:
         """Round price to HL tick size."""
@@ -164,6 +178,10 @@ class DirectHLProxy:
         coin = _to_hl_coin(instrument)
         is_buy = side.lower() == "buy"
 
+        # Round size to instrument's szDecimals (e.g. BTC=3, DOGE=0, ETH=4)
+        sz_dec = self._get_sz_decimals(coin)
+        size = round(size, sz_dec)
+
         # Round price to HL tick size (0.1 for most assets)
         price = self._round_price(price)
 
@@ -181,11 +199,25 @@ class DirectHLProxy:
                 pass  # use original price if snapshot fails
 
         try:
-            result = self._exchange.order(
-                coin, is_buy, size, price,
-                {"limit": {"tif": tif}},
-                builder=builder,
-            )
+            result = None
+            for attempt in range(3):
+                try:
+                    result = self._exchange.order(
+                        coin, is_buy, size, price,
+                        {"limit": {"tif": tif}},
+                        builder=builder,
+                    )
+                    break
+                except Exception as rate_err:
+                    if "429" in str(rate_err) and attempt < 2:
+                        delay = (attempt + 1) * 2  # 2s, 4s
+                        log.warning("Rate limited (429), retrying in %ds...", delay)
+                        time.sleep(delay)
+                    else:
+                        raise
+
+            if result is None:
+                return None
 
             if result.get("status") == "err":
                 log.warning("Order rejected: %s %s %s @ %s -- %s",

@@ -24,7 +24,7 @@ def create_keystore(private_key: str, password: str) -> Path:
     from eth_account import Account
 
     encrypted = Account.encrypt(private_key, password)
-    address = encrypted["address"]
+    address = encrypted["address"].lower()
 
     ks_dir = _ensure_dir()
     ks_path = ks_dir / f"{address}.json"
