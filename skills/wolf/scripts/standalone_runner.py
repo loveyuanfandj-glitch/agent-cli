@@ -1,7 +1,7 @@
 """WOLF standalone runner — multi-slot orchestrator tick loop.
 
-Composes radar + movers + Guard + HOWL into a single autonomous strategy.
-Each tick: fetch prices → update ROEs → check Guard → run movers → evaluate.
+Composes radar + pulse + Guard + HOWL into a single autonomous strategy.
+Each tick: fetch prices -> update ROEs -> check Guard -> run pulse -> evaluate.
 Periodic: HOWL performance review → auto-adjust config parameters.
 Scheduled: daily PnL reset, comprehensive HOWL reports.
 """
@@ -30,7 +30,7 @@ from modules.journal_guard import JournalGuard
 from modules.judge_guard import JudgeGuard
 from modules.memory_engine import MemoryEngine
 from modules.memory_guard import MemoryGuard
-from modules.movers_guard import MoversGuard
+from modules.pulse_guard import PulseGuard
 from modules.radar_guard import RadarGuard
 from modules.wolf_config import WolfConfig
 from modules.wolf_engine import WolfAction, WolfEngine
@@ -45,7 +45,7 @@ class WolfRunner:
     """Autonomous WOLF strategy tick loop.
 
     Tick schedule (60s base):
-      Every tick:      Fetch prices → update ROEs → check Guard → run movers → evaluate
+      Every tick:      Fetch prices -> update ROEs -> check Guard -> run pulse -> evaluate
       Every 5 ticks:   Watchdog health check
       Every 15 ticks:  Run radar → queue high-score opportunities
     """
@@ -78,7 +78,7 @@ class WolfRunner:
             self.state = WolfState.new(self.config.max_slots)
 
         # Sub-guards
-        self.movers_guard = MoversGuard()
+        self.pulse_guard = PulseGuard()
         self.radar_guard = RadarGuard()
         self.radar_guard.history.path = f"{data_dir}/radar-history.json"
 
@@ -255,8 +255,8 @@ class WolfRunner:
         # 2. Run Guard checks for active slots
         slot_guard_results = self._run_guard_checks(slot_prices)
 
-        # 3. Run movers (every tick)
-        movers_signals = self._run_movers()
+        # 3. Run pulse (every tick)
+        pulse_signals = self._run_pulse()
 
         # 3b. Run smart money tracker
         smart_money_signals = []
@@ -286,7 +286,7 @@ class WolfRunner:
         # 6. Engine evaluation
         actions = self.engine.evaluate(
             state=self.state,
-            movers_signals=movers_signals,
+            pulse_signals=pulse_signals,
             scanner_opps=scanner_opps,
             slot_prices=slot_prices,
             slot_guard_results=slot_guard_results,
@@ -355,8 +355,8 @@ class WolfRunner:
 
         return results
 
-    def _run_movers(self) -> List[Dict[str, Any]]:
-        """Run movers scan and return signal dicts for the engine."""
+    def _run_pulse(self) -> List[Dict[str, Any]]:
+        """Run pulse scan and return signal dicts for the engine."""
         try:
             all_markets = self.hl.get_all_markets()
 
@@ -373,7 +373,7 @@ class WolfRunner:
                     except (IndexError, AttributeError):
                         continue
                     vol = float(ctx.get("dayNtlVlm", 0))
-                    if vol >= self.movers_guard.config.volume_min_24h and name:
+                    if vol >= self.pulse_guard.config.volume_min_24h and name:
                         try:
                             c4h = self.hl.get_candles(name, "4h", 7 * 24 * 3600 * 1000)
                             c1h = self.hl.get_candles(name, "1h", 48 * 3600 * 1000)
@@ -382,7 +382,7 @@ class WolfRunner:
                         except Exception:
                             pass
 
-            result = self.movers_guard.scan(all_markets=all_markets, asset_candles=asset_candles)
+            result = self.pulse_guard.scan(all_markets=all_markets, asset_candles=asset_candles)
             return [
                 {
                     "asset": sig.asset,
@@ -393,7 +393,7 @@ class WolfRunner:
                 for sig in result.signals
             ]
         except Exception as e:
-            log.warning("Movers scan failed: %s", e)
+            log.warning("Pulse scan failed: %s", e)
             return []
 
     def _run_scanner(self) -> List[Dict[str, Any]]:

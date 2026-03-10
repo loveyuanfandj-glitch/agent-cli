@@ -1,4 +1,4 @@
-"""EmergingMoversEngine — pure, stateless detector (zero I/O).
+"""PulseEngine — pure, stateless detector (zero I/O).
 
 Detects assets with sudden capital inflow using OI delta, volume surge,
 funding shifts, and price breakouts as proxy signals for smart money flow.
@@ -8,28 +8,28 @@ from __future__ import annotations
 import time
 from typing import Any, Dict, List, Optional
 
-from modules.movers_config import MoversConfig
-from modules.movers_state import AssetSnapshot, MoverScanResult, MoverSignal
+from modules.pulse_config import PulseConfig
+from modules.pulse_state import AssetSnapshot, PulseResult, PulseSignal
 
 
-class EmergingMoversEngine:
-    """Stateless emerging movers detection engine. Zero I/O."""
+class PulseEngine:
+    """Stateless Pulse detection engine. Zero I/O."""
 
-    def __init__(self, config: Optional[MoversConfig] = None):
-        self.config = config or MoversConfig()
+    def __init__(self, config: Optional[PulseConfig] = None):
+        self.config = config or PulseConfig()
 
     def scan(
         self,
         all_markets: list,
         asset_candles: Dict[str, Dict[str, List[Dict]]],
         scan_history: List[Dict],
-    ) -> MoverScanResult:
-        """Run full movers detection pipeline.
+    ) -> PulseResult:
+        """Run full Pulse detection pipeline.
 
         Args:
             all_markets: [meta_dict, asset_ctxs_list] from HL API
             asset_candles: {asset: {"1h": [...]}} for breakout detection
-            scan_history: list of previous MoverScanResult dicts
+            scan_history: list of previous PulseResult dicts
         """
         start_ms = int(time.time() * 1000)
         cfg = self.config
@@ -43,7 +43,7 @@ class EmergingMoversEngine:
         # 3. Check if we have enough history
         has_baseline = len(scan_history) >= cfg.min_scans_for_signal
 
-        signals: List[MoverSignal] = []
+        signals: List[PulseSignal] = []
         if has_baseline:
             for snap in qualifying:
                 signal = self._detect_signals(snap, asset_candles, scan_history)
@@ -53,7 +53,7 @@ class EmergingMoversEngine:
         # 4. Sort by confidence
         signals.sort(key=lambda s: s.confidence, reverse=True)
 
-        return MoverScanResult(
+        return PulseResult(
             scan_time_ms=start_ms,
             signals=signals,
             snapshots=snapshots,
@@ -99,13 +99,13 @@ class EmergingMoversEngine:
         snap: AssetSnapshot,
         asset_candles: Dict[str, Dict[str, List[Dict]]],
         scan_history: List[Dict],
-    ) -> Optional[MoverSignal]:
+    ) -> Optional[PulseSignal]:
         """Detect signals for a single asset. Returns best signal or None."""
         cfg = self.config
 
         # Compute baselines
-        from modules.movers_state import MoversHistoryStore
-        store = MoversHistoryStore.__new__(MoversHistoryStore)
+        from modules.pulse_state import PulseHistoryStore
+        store = PulseHistoryStore.__new__(PulseHistoryStore)
         oi_baseline = store.get_asset_oi_baseline(snap.asset, scan_history, cfg.oi_baseline_window)
         funding_history = store.get_asset_funding_history(snap.asset, scan_history, 3)
 
@@ -137,7 +137,7 @@ class EmergingMoversEngine:
         if is_erratic:
             confidence *= 0.5
 
-        return MoverSignal(
+        return PulseSignal(
             asset=snap.asset,
             signal_type=signal_type,
             direction=direction,
@@ -291,7 +291,7 @@ class EmergingMoversEngine:
 
         # Funding direction
         if snap.funding_rate > 0:
-            votes["LONG"] += 1  # longs paying → new positions likely long
+            votes["LONG"] += 1  # longs paying -> new positions likely long
         elif snap.funding_rate < 0:
             votes["SHORT"] += 1
 

@@ -1,36 +1,36 @@
-"""MoversGuard — bridge between pure engine, persistence, and logging."""
+"""PulseGuard — bridge between pure engine, persistence, and logging."""
 from __future__ import annotations
 
 import logging
 from typing import Dict, List, Optional
 
-from modules.movers_config import MoversConfig
-from modules.movers_engine import EmergingMoversEngine
-from modules.movers_state import MoversHistoryStore, MoverScanResult
+from modules.pulse_config import PulseConfig
+from modules.pulse_engine import PulseEngine
+from modules.pulse_state import PulseHistoryStore, PulseResult
 
-log = logging.getLogger("movers_guard")
+log = logging.getLogger("pulse_guard")
 
 
-class MoversGuard:
+class PulseGuard:
     """Owns engine + history store + logging."""
 
     def __init__(
         self,
-        config: Optional[MoversConfig] = None,
-        history_store: Optional[MoversHistoryStore] = None,
+        config: Optional[PulseConfig] = None,
+        history_store: Optional[PulseHistoryStore] = None,
     ):
-        self.config = config or MoversConfig()
-        self.engine = EmergingMoversEngine(self.config)
-        self.history = history_store or MoversHistoryStore(
+        self.config = config or PulseConfig()
+        self.engine = PulseEngine(self.config)
+        self.history = history_store or PulseHistoryStore(
             max_size=self.config.scan_history_size,
         )
-        self.last_result: Optional[MoverScanResult] = None
+        self.last_result: Optional[PulseResult] = None
 
     def scan(
         self,
         all_markets: list,
         asset_candles: Dict[str, Dict[str, List[Dict]]],
-    ) -> MoverScanResult:
+    ) -> PulseResult:
         """Run scan, persist results, log summary."""
         scan_history = self.history.get_history()
 
@@ -45,7 +45,7 @@ class MoversGuard:
 
         stats = result.stats
         log.info(
-            "Movers scan: %d assets → %d qualifying → %d signals (history=%d)",
+            "Pulse scan: %d assets -> %d qualifying -> %d signals (history=%d)",
             stats.get("total_assets", 0),
             stats.get("qualifying", 0),
             stats.get("signals_detected", 0),

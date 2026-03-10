@@ -41,7 +41,7 @@ class TestJudgeEngine:
         trades = _make_trades([
             ("ETH-PERP", "radar", 3000, 3150, 1.0),
             ("ETH-PERP", "radar", 3100, 3200, 1.0),
-            ("SOL-PERP", "movers_immediate", 100, 110, 10.0),
+            ("SOL-PERP", "pulse_immediate", 100, 110, 10.0),
         ])
         report = engine.evaluate(trades)
         assert report.round_trips_evaluated == 3
@@ -63,16 +63,16 @@ class TestJudgeEngine:
 
     def test_high_fp_generates_recommendation(self):
         engine = JudgeEngine()
-        # 1 win, 3 losses for movers_immediate
+        # 1 win, 3 losses for pulse_immediate
         trades = _make_trades([
-            ("ETH-PERP", "movers_immediate", 3000, 3050, 1.0),   # win
-            ("SOL-PERP", "movers_immediate", 100, 95, 10.0),     # loss
-            ("BTC-PERP", "movers_immediate", 50000, 49500, 0.1), # loss
-            ("DOGE-PERP", "movers_immediate", 0.1, 0.09, 1000),  # loss
+            ("ETH-PERP", "pulse_immediate", 3000, 3050, 1.0),   # win
+            ("SOL-PERP", "pulse_immediate", 100, 95, 10.0),     # loss
+            ("BTC-PERP", "pulse_immediate", 50000, 49500, 0.1), # loss
+            ("DOGE-PERP", "pulse_immediate", 0.1, 0.09, 1000),  # loss
         ])
         report = engine.evaluate(trades)
-        assert report.false_positive_rates.get("movers_immediate", 0) == 75.0
-        assert any(r["param"] == "movers_immediate_auto_entry" for r in report.config_recommendations)
+        assert report.false_positive_rates.get("pulse_immediate", 0) == 75.0
+        assert any(r["param"] == "pulse_immediate_auto_entry" for r in report.config_recommendations)
 
     def test_playbook_stats(self):
         engine = JudgeEngine()

@@ -21,7 +21,7 @@ class WolfAction:
     direction: str = ""     # "long" or "short"
     size: float = 0.0
     reason: str = ""
-    source: str = ""        # movers_immediate, movers_signal, radar
+    source: str = ""        # pulse_immediate, pulse_signal, radar
     signal_score: float = 0.0
     execution_algo: str = "immediate"  # "immediate" or "twap"
 
@@ -35,7 +35,7 @@ class WolfEngine:
     def evaluate(
         self,
         state: WolfState,
-        movers_signals: List[Dict[str, Any]],
+        pulse_signals: List[Dict[str, Any]],
         scanner_opps: List[Dict[str, Any]],
         slot_prices: Dict[int, float],
         slot_dsl_results: Dict[int, Dict[str, Any]],
@@ -65,7 +65,7 @@ class WolfEngine:
         # 2. Exit checks for each active slot
         for slot in state.active_slots():
             exit_action = self._check_exit(
-                slot, movers_signals, scanner_opps,
+                slot, pulse_signals, scanner_opps,
                 slot_prices.get(slot.slot_id, 0),
                 slot_dsl_results.get(slot.slot_id, {}),
                 now_ms,
@@ -75,7 +75,7 @@ class WolfEngine:
 
         # 3. Entry evaluation
         entry_actions = self._evaluate_entries(
-            state, movers_signals, scanner_opps, now_ms,
+            state, pulse_signals, scanner_opps, now_ms,
             smart_money_signals=smart_money_signals or [],
         )
         actions.extend(entry_actions)
@@ -85,7 +85,7 @@ class WolfEngine:
     def _check_exit(
         self,
         slot: WolfSlot,
-        movers_signals: List[Dict],
+        pulse_signals: List[Dict],
         scanner_opps: List[Dict],
         current_price: float,
         dsl_result: Dict,
@@ -125,7 +125,7 @@ class WolfEngine:
         # 3. Conviction collapse
         coin = slot.instrument.replace("-PERP", "")
         still_in_signals = any(
-            s.get("asset") == coin for s in movers_signals
+            s.get("asset") == coin for s in pulse_signals
         )
         still_in_scanner = any(
             o.get("asset") == coin and o.get("direction", "").lower() == slot.direction
@@ -163,7 +163,7 @@ class WolfEngine:
     def _evaluate_entries(
         self,
         state: WolfState,
-        movers_signals: List[Dict],
+        pulse_signals: List[Dict],
         scanner_opps: List[Dict],
         now_ms: int,
         smart_money_signals: Optional[List[Dict[str, Any]]] = None,
@@ -176,15 +176,15 @@ class WolfEngine:
         # Collect candidates in priority order
         candidates: List[Dict[str, Any]] = []
 
-        # Priority 1: Movers IMMEDIATE signals
-        for sig in movers_signals:
-            if sig.get("signal_type") == "IMMEDIATE_MOVER" and cfg.movers_immediate_auto_entry:
+        # Priority 1: Pulse IMMEDIATE signals
+        for sig in pulse_signals:
+            if sig.get("signal_type") == "IMMEDIATE_MOVER" and cfg.pulse_immediate_auto_entry:
                 instrument = sig["asset"] + "-PERP"
                 if instrument not in active_instruments and instrument not in cfg.excluded_instruments:
                     candidates.append({
                         "instrument": instrument,
                         "direction": sig.get("direction", "LONG").lower(),
-                        "source": "movers_immediate",
+                        "source": "pulse_immediate",
                         "score": sig.get("confidence", 100),
                         "priority": 1,
                     })
@@ -215,16 +215,16 @@ class WolfEngine:
                         "priority": 2,
                     })
 
-        # Priority 3: Movers other signals
-        for sig in movers_signals:
+        # Priority 3: Pulse other signals
+        for sig in pulse_signals:
             if sig.get("signal_type") != "IMMEDIATE_MOVER":
-                if sig.get("confidence", 0) >= cfg.movers_confidence_threshold:
+                if sig.get("confidence", 0) >= cfg.pulse_confidence_threshold:
                     instrument = sig["asset"] + "-PERP"
                     if instrument not in active_instruments and instrument not in cfg.excluded_instruments:
                         candidates.append({
                             "instrument": instrument,
                             "direction": sig.get("direction", "LONG").lower(),
-                            "source": "movers_signal",
+                            "source": "pulse_signal",
                             "score": sig.get("confidence", 0),
                             "priority": 3,
                         })

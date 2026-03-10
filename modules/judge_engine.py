@@ -101,7 +101,7 @@ class JudgeEngine:
     """Evaluates closed round trips for signal quality and trading patterns.
 
     Works with enriched trade records that contain entry source info in the
-    `meta` field (e.g., "entry:movers_immediate", "entry:radar").
+    `meta` field (e.g., "entry:pulse_immediate", "entry:radar").
     """
 
     def evaluate(
@@ -352,24 +352,24 @@ class JudgeEngine:
         """Generate config recommendations based on findings."""
         recs = []
 
-        # Movers immediate: if FP > 50%, recommend disabling auto-entry
-        if fp_rates.get("movers_immediate", 0) > 50:
+        # Pulse immediate: if FP > 50%, recommend disabling auto-entry
+        if fp_rates.get("pulse_immediate", 0) > 50:
             recs.append({
-                "param": "movers_immediate_auto_entry",
+                "param": "pulse_immediate_auto_entry",
                 "suggested_value": False,
-                "reason": f"Movers immediate FP rate is {fp_rates['movers_immediate']:.0f}% — "
+                "reason": f"Pulse immediate FP rate is {fp_rates['pulse_immediate']:.0f}% — "
                           "disable auto-entry until signal quality improves",
-                "summary": "Disable movers_immediate auto-entry (high FP rate)",
+                "summary": "Disable pulse_immediate auto-entry (high FP rate)",
             })
 
-        # Movers signal: if FP > 50%, raise threshold
-        if fp_rates.get("movers_signal", 0) > 50:
+        # Pulse signal: if FP > 50%, raise threshold
+        if fp_rates.get("pulse_signal", 0) > 50:
             recs.append({
-                "param": "movers_confidence_threshold",
+                "param": "pulse_confidence_threshold",
                 "suggested_value": 85.0,
-                "reason": f"Movers signal FP rate is {fp_rates['movers_signal']:.0f}% — "
+                "reason": f"Pulse signal FP rate is {fp_rates['pulse_signal']:.0f}% — "
                           "raise confidence threshold to filter weak signals",
-                "summary": "Raise movers confidence threshold",
+                "summary": "Raise pulse confidence threshold",
             })
 
         # Radar: if FP > 50%, raise threshold

@@ -75,8 +75,8 @@ class TestMemoryEngine:
         engine = MemoryEngine()
         event = engine.create_judge_event(
             findings_count=3,
-            false_positive_rates={"radar": 25.0, "movers_immediate": 60.0},
-            recommendations=["Disable movers auto-entry"],
+            false_positive_rates={"radar": 25.0, "pulse_immediate": 60.0},
+            recommendations=["Disable pulse auto-entry"],
         )
         assert event.event_type == "judge_finding"
         assert event.payload["findings_count"] == 3

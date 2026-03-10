@@ -1,9 +1,9 @@
-"""Tests for modules/movers_engine.py — signal detection with synthetic data."""
+"""Tests for modules/pulse_engine.py — signal detection with synthetic data."""
 import pytest
 
-from modules.movers_config import MoversConfig
-from modules.movers_engine import EmergingMoversEngine
-from modules.movers_state import AssetSnapshot, MoverScanResult
+from modules.pulse_config import PulseConfig
+from modules.pulse_engine import PulseEngine
+from modules.pulse_state import AssetSnapshot, PulseResult
 
 
 def _make_markets(assets_data):
@@ -52,7 +52,7 @@ def _make_candles_1h(prices):
 
 class TestOiDelta:
     def setup_method(self):
-        self.engine = EmergingMoversEngine()
+        self.engine = PulseEngine()
 
     def test_detects_oi_breakout(self):
         snap = AssetSnapshot(asset="ETH", open_interest=1.1e8)
@@ -78,7 +78,7 @@ class TestOiDelta:
 
 class TestVolumeSurge:
     def setup_method(self):
-        self.engine = EmergingMoversEngine()
+        self.engine = PulseEngine()
 
     def test_detects_surge(self):
         snap = AssetSnapshot(asset="ETH", volume_24h=6e6)  # avg 4h = 1e6
@@ -100,7 +100,7 @@ class TestVolumeSurge:
 
 class TestFundingFlip:
     def setup_method(self):
-        self.engine = EmergingMoversEngine()
+        self.engine = PulseEngine()
 
     def test_detects_flip(self):
         snap = AssetSnapshot(asset="ETH", funding_rate=-0.001)
@@ -127,7 +127,7 @@ class TestFundingFlip:
 
 class TestPriceBreakout:
     def setup_method(self):
-        self.engine = EmergingMoversEngine()
+        self.engine = PulseEngine()
 
     def test_breakout_up(self):
         prices = [100.0] * 24 + [105.0]  # 25 1h candles, last one breaks out
@@ -155,7 +155,7 @@ class TestPriceBreakout:
 
 class TestDirectionClassification:
     def setup_method(self):
-        self.engine = EmergingMoversEngine()
+        self.engine = PulseEngine()
 
     def test_long_from_positive_funding(self):
         snap = AssetSnapshot(asset="ETH", funding_rate=0.001)
@@ -176,7 +176,7 @@ class TestDirectionClassification:
 
 class TestSignalClassification:
     def setup_method(self):
-        self.engine = EmergingMoversEngine()
+        self.engine = PulseEngine()
 
     def test_immediate_mover(self):
         oi = {"delta_pct": 20.0}
@@ -203,7 +203,7 @@ class TestSignalClassification:
 class TestFullPipeline:
     def test_first_scan_no_signals(self):
         """First scan (no history) should produce no signals."""
-        engine = EmergingMoversEngine()
+        engine = PulseEngine()
         markets = _make_markets([
             ("ETH", 5e8, 0.001, 5e7, 2500),
             ("SOL", 2e8, -0.001, 2e7, 100),
@@ -214,7 +214,7 @@ class TestFullPipeline:
 
     def test_second_scan_with_oi_spike(self):
         """After building baseline, OI spike should produce signal."""
-        engine = EmergingMoversEngine(MoversConfig(min_scans_for_signal=2))
+        engine = PulseEngine(PulseConfig(min_scans_for_signal=2))
 
         baseline = [("ETH", 5e8, 0.001, 5e7, 2500), ("SOL", 2e8, -0.001, 2e7, 100)]
         history = [
@@ -237,7 +237,7 @@ class TestFullPipeline:
 
     def test_volume_minimum_filter(self):
         """Assets below volume minimum should be excluded."""
-        engine = EmergingMoversEngine(MoversConfig(min_scans_for_signal=1))
+        engine = PulseEngine(PulseConfig(min_scans_for_signal=1))
 
         history = [_make_history_scan([("SMALL", 100_000, 0, 1e6, 1.0)])]
         markets = _make_markets([("SMALL", 100_000, 0, 2e6, 1.0)])
@@ -246,13 +246,13 @@ class TestFullPipeline:
         assert result.stats["qualifying"] == 0
 
     def test_empty_markets(self):
-        engine = EmergingMoversEngine()
+        engine = PulseEngine()
         result = engine.scan(all_markets=[{}, []], asset_candles={}, scan_history=[])
         assert result.signals == []
         assert result.stats["total_assets"] == 0
 
     def test_config_presets(self):
-        from modules.movers_config import MOVERS_PRESETS
-        assert "default" in MOVERS_PRESETS
-        assert "sensitive" in MOVERS_PRESETS
-        assert MOVERS_PRESETS["sensitive"].oi_delta_breakout_pct < MOVERS_PRESETS["default"].oi_delta_breakout_pct
+        from modules.pulse_config import PULSE_PRESETS
+        assert "default" in PULSE_PRESETS
+        assert "sensitive" in PULSE_PRESETS
+        assert PULSE_PRESETS["sensitive"].oi_delta_breakout_pct < PULSE_PRESETS["default"].oi_delta_breakout_pct

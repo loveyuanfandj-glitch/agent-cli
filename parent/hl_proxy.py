@@ -104,7 +104,7 @@ class MockHLProxy:
         """Generate mock candle data with realistic patterns.
 
         BTC and ETH get an uptrend with volume surge in recent candles,
-        making them detectable by Radar and Movers.
+        making them detectable by Radar and Pulse.
         """
         import random
         now = int(time.time() * 1000)
@@ -145,7 +145,7 @@ class MockHLProxy:
         """Generate mock meta + asset contexts with persistent state.
 
         Signal coins (ETH, SOL, LINK) get OI growth and volume spikes
-        across ticks so Movers can detect them.
+        across ticks so Pulse can detect them.
         """
         import random
 

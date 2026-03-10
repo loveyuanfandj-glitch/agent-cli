@@ -1,4 +1,4 @@
-"""Emerging movers state models — signals, scan results, and history persistence."""
+"""Pulse state models — signals, scan results, and history persistence."""
 from __future__ import annotations
 
 import json
@@ -8,8 +8,8 @@ from typing import Any, Dict, List, Optional
 
 
 @dataclass
-class MoverSignal:
-    """A detected emerging mover signal."""
+class PulseSignal:
+    """A detected Pulse signal."""
     asset: str
     signal_type: str            # IMMEDIATE_MOVER, VOLUME_SURGE, OI_BREAKOUT, FUNDING_FLIP
     direction: str              # "LONG" or "SHORT"
@@ -34,10 +34,10 @@ class AssetSnapshot:
 
 
 @dataclass
-class MoverScanResult:
-    """Complete result of a single movers scan."""
+class PulseResult:
+    """Complete result of a single Pulse scan."""
     scan_time_ms: int
-    signals: List[MoverSignal] = field(default_factory=list)
+    signals: List[PulseSignal] = field(default_factory=list)
     snapshots: List[AssetSnapshot] = field(default_factory=list)
     stats: Dict[str, Any] = field(default_factory=dict)
 
@@ -50,26 +50,26 @@ class MoverScanResult:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "MoverScanResult":
+    def from_dict(cls, d: Dict[str, Any]) -> "PulseResult":
         return cls(
             scan_time_ms=d.get("scan_time_ms", 0),
-            signals=[MoverSignal(**s) for s in d.get("signals", [])],
+            signals=[PulseSignal(**s) for s in d.get("signals", [])],
             snapshots=[AssetSnapshot(**m) for m in d.get("snapshots", [])],
             stats=d.get("stats", {}),
         )
 
 
-class MoversHistoryStore:
+class PulseHistoryStore:
     """Persists scan history for cross-scan comparison."""
 
-    def __init__(self, path: str = "data/movers/scan-history.json", max_size: int = 30):
+    def __init__(self, path: str = "data/pulse/scan-history.json", max_size: int = 30):
         self.path = path
         self.max_size = max_size
 
     def _ensure_dir(self):
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
 
-    def save_scan(self, result: MoverScanResult) -> None:
+    def save_scan(self, result: PulseResult) -> None:
         history = self.get_history()
         history.append(result.to_dict())
         history = history[-self.max_size:]

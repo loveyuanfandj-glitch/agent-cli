@@ -1,4 +1,4 @@
-"""Standalone movers runner — tick loop that detects emerging movers."""
+"""Standalone Pulse runner — tick loop that detects capital inflow."""
 from __future__ import annotations
 
 import skills._bootstrap  # noqa: F401 — auto-setup sys.path
@@ -9,29 +9,29 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, Optional
 
-from modules.movers_config import MoversConfig
-from modules.movers_guard import MoversGuard
-from modules.movers_state import MoverScanResult
+from modules.pulse_config import PulseConfig
+from modules.pulse_guard import PulseGuard
+from modules.pulse_state import PulseResult
 
-log = logging.getLogger("movers_runner")
+log = logging.getLogger("pulse_runner")
 
 
-class MoversRunner:
-    """Autonomous movers detection tick loop."""
+class PulseRunner:
+    """Autonomous Pulse detection tick loop."""
 
     def __init__(
         self,
         hl,
-        config: Optional[MoversConfig] = None,
+        config: Optional[PulseConfig] = None,
         tick_interval: float = 60.0,
         json_output: bool = False,
-        data_dir: str = "data/movers",
+        data_dir: str = "data/pulse",
     ):
         self.hl = hl
-        self.config = config or MoversConfig()
+        self.config = config or PulseConfig()
         self.tick_interval = tick_interval
         self.json_output = json_output
-        self.guard = MoversGuard(config=self.config)
+        self.guard = PulseGuard(config=self.config)
         self.guard.history.path = f"{data_dir}/scan-history.json"
         self._running = False
         self.scan_count = 0
@@ -41,7 +41,7 @@ class MoversRunner:
         signal.signal(signal.SIGINT, self._handle_shutdown)
         signal.signal(signal.SIGTERM, self._handle_shutdown)
 
-        log.info("Movers detector started: tick=%.0fs min_vol=%.0f",
+        log.info("Pulse detector started: tick=%.0fs min_vol=%.0f",
                  self.tick_interval, self.config.volume_min_24h)
 
         while self._running:
@@ -58,20 +58,20 @@ class MoversRunner:
             if self._running and self.tick_interval > 0 and (max_scans == 0 or self.scan_count < max_scans):
                 time.sleep(self.tick_interval)
 
-        log.info("Movers detector stopped after %d scans", self.scan_count)
+        log.info("Pulse detector stopped after %d scans", self.scan_count)
 
-    def run_once(self) -> MoverScanResult:
+    def run_once(self) -> PulseResult:
         result = self._scan_tick()
         self.scan_count = 1
         self._print_result(result)
         return result
 
-    def _scan_tick(self) -> MoverScanResult:
+    def _scan_tick(self) -> PulseResult:
         all_markets = self.hl.get_all_markets()
 
         # Pre-screen to find assets worth fetching candles for
-        from modules.movers_engine import EmergingMoversEngine
-        engine = EmergingMoversEngine(self.config)
+        from modules.pulse_engine import PulseEngine
+        engine = PulseEngine(self.config)
         snapshots = engine._parse_markets(all_markets, int(time.time() * 1000))
         qualifying = [s for s in snapshots if s.volume_24h >= self.config.volume_min_24h]
 
@@ -98,7 +98,7 @@ class MoversRunner:
 
         return self.guard.scan(all_markets=all_markets, asset_candles=asset_candles)
 
-    def _print_result(self, result: MoverScanResult) -> None:
+    def _print_result(self, result: PulseResult) -> None:
         if self.json_output:
             import json
             print(json.dumps(result.to_dict(), indent=2))
@@ -106,9 +106,9 @@ class MoversRunner:
 
         stats = result.stats
         print(f"\n{'='*60}")
-        print(f"MOVERS #{self.scan_count}  |  "
-              f"{stats.get('total_assets', 0)} assets → "
-              f"{stats.get('qualifying', 0)} qualifying → "
+        print(f"PULSE #{self.scan_count}  |  "
+              f"{stats.get('total_assets', 0)} assets -> "
+              f"{stats.get('qualifying', 0)} qualifying -> "
               f"{stats.get('signals_detected', 0)} signals  "
               f"(history={stats.get('history_depth', 0)})")
         print(f"{'='*60}")
@@ -117,7 +117,7 @@ class MoversRunner:
             if not stats.get("has_baseline"):
                 print(f"Building baseline... ({stats.get('history_depth', 0)}/{self.config.min_scans_for_signal} scans)")
             else:
-                print("No emerging movers detected.")
+                print("No capital inflow signals detected.")
             return
 
         print(f"{'#':<4} {'Type':<18} {'Dir':<6} {'Asset':<8} {'Conf':<6} "

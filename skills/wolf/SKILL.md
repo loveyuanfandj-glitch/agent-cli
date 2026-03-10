@@ -8,19 +8,19 @@ dependencies:
   - modules/wolf_state.py
   - modules/wolf_engine.py
   - modules/radar_guard.py
-  - modules/movers_guard.py
+  - modules/pulse_guard.py
   - modules/dsl_guard.py
 ---
 
 # WOLF Strategy
 
-Autonomous multi-slot trading strategy that composes Radar + Movers + DSL into a unified orchestrator.
+Autonomous multi-slot trading strategy that composes Radar + Pulse + DSL into a unified orchestrator.
 
 ## Architecture
 
 WOLF runs a single tick loop (60s base) that:
 
-1. **Every tick**: Fetch prices, update ROEs, check DSL guards, run movers, evaluate entry/exit
+1. **Every tick**: Fetch prices, update ROEs, check DSL guards, run pulse, evaluate entry/exit
 2. **Every 5 ticks** (5 min): Watchdog health check (verify positions match exchange)
 3. **Every 15 ticks** (15 min): Run opportunity radar, queue high-score setups
 
@@ -33,9 +33,9 @@ WOLF runs a single tick loop (60s base) that:
 
 ## Entry Priority
 
-1. Movers IMMEDIATE_MOVER -> auto-enter
+1. Pulse IMMEDIATE_MOVER -> auto-enter
 2. Radar score > 170 -> queue entry
-3. Movers other signals (confidence > 70) -> enter
+3. Pulse other signals (confidence > 70) -> enter
 
 ## Exit Priority
 
@@ -82,7 +82,7 @@ You are the WOLF orchestrator. Your job is to hunt for high-probability setups a
 RULES:
 - NEVER exceed `max_slots` concurrent positions
 - ALWAYS check `daily_loss_limit` before entering new positions
-- NEVER enter a position without Radar score > 170 OR Movers IMMEDIATE signal
+- NEVER enter a position without Radar score > 170 OR Pulse IMMEDIATE signal
 - ALWAYS run DSL trailing stop on every active position
 - Exit ALL positions immediately if daily loss exceeds limit
 - ALWAYS run `--mock --max-ticks 5` before first live deployment
@@ -92,22 +92,22 @@ RULES:
 
 | Condition | Action |
 |-----------|--------|
-| Radar score > 200 + Movers IMMEDIATE | Enter with 1.5x size — strongest conviction |
-| Radar score > 170, no Movers signal | Enter with 1.0x size — radar-only conviction |
-| Radar score 140-170 | Queue entry, wait for Movers confirmation within 15 min |
+| Radar score > 200 + Pulse IMMEDIATE | Enter with 1.5x size — strongest conviction |
+| Radar score > 170, no Pulse signal | Enter with 1.0x size — radar-only conviction |
+| Radar score 140-170 | Queue entry, wait for Pulse confirmation within 15 min |
 | Radar score < 140 | Skip — insufficient edge |
 | ROE > 5% and DSL Phase 2 active | Let DSL manage exit — do not manually close |
 | ROE < -3% for > 15 min | Exit — conviction lost, don't wait for hard stop |
 | 2 consecutive losses same session | Reduce position size by 50% for next 2 trades |
 | Daily loss > 50% of limit | Switch to conservative preset for remainder |
 | All slots filled | Wait for exit before scanning new entries |
-| Movers IMMEDIATE but all slots full | Evaluate weakest slot for replacement |
+| Pulse IMMEDIATE but all slots full | Evaluate weakest slot for replacement |
 
 ## Anti-Patterns
 
 - **Over-leveraging on volatile days**: Using aggressive preset during high-VIX or post-CPI → blown account. Use conservative preset on macro days.
 - **"One more trade to recover"**: After hitting daily loss limit, entering another trade always makes it worse. Hard stop means hard stop.
-- **Chasing Movers signals**: Entering on VOLUME_SURGE without Radar confirmation → 60% historical loss rate. IMMEDIATE_MOVER is the only standalone entry signal.
+- **Chasing Pulse signals alone**: Entering on VOLUME_SURGE without Radar confirmation → 60% historical loss rate. IMMEDIATE_MOVER is the only standalone entry signal.
 - **Tight stops on entry**: DSL Phase 1 exists to give the trade room. Overriding with tight custom stops → premature exits on noise.
 - **Running without budget cap**: Always set `--budget`. Unbounded budget = unbounded loss.
 
@@ -123,7 +123,7 @@ RULES:
 
 ## Composition
 
-WOLF is the top-level orchestrator. It composes Radar (opportunity finding), Movers (real-time signal detection), and DSL (risk management) into one tick loop. Use WOLF for autonomous trading. Use individual skills when you need manual control.
+WOLF is the top-level orchestrator. It composes Radar (opportunity finding), Pulse (real-time signal detection), and DSL (risk management) into one tick loop. Use WOLF for autonomous trading. Use individual skills when you need manual control.
 
 ## Cron Template
 

@@ -413,8 +413,8 @@ class TestWolfEngineSmartMoney:
         actions = engine.evaluate(state, [], [], {}, {})
         assert actions == []
 
-    def test_movers_immediate_still_beats_high_conviction(self):
-        """Movers IMMEDIATE (priority 1) still beats HIGH_CONVICTION (priority 1.5)."""
+    def test_pulse_immediate_still_beats_high_conviction(self):
+        """Pulse IMMEDIATE (priority 1) still beats HIGH_CONVICTION (priority 1.5)."""
         engine = WolfEngine(WolfConfig(max_slots=1))
         state = self._make_state(max_slots=1)
 
@@ -432,4 +432,4 @@ class TestWolfEngineSmartMoney:
         entries = [a for a in actions if a.action == "enter"]
         assert len(entries) == 1
         assert entries[0].instrument == "SOL-PERP"
-        assert entries[0].source == "movers_immediate"
+        assert entries[0].source == "pulse_immediate"

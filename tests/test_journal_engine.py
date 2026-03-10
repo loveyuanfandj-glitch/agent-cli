@@ -39,7 +39,7 @@ class TestJournalEngine:
         assert "Guard trailing stop" in entry.exit_reasoning
         assert entry.holding_ms == 3600000
 
-    def test_create_entry_movers_loss(self):
+    def test_create_entry_pulse_loss(self):
         engine = JournalEngine()
         entry = engine.create_entry(
             instrument="SOL-PERP",
@@ -48,7 +48,7 @@ class TestJournalEngine:
             exit_price=105.0,
             pnl=-25.0,
             roe_pct=-5.0,
-            entry_source="movers_immediate",
+            entry_source="pulse_immediate",
             entry_signal_score=100.0,
             close_reason="conviction_collapse",
             entry_ts=1000000,
@@ -80,5 +80,5 @@ class TestJournalEngine:
 
     def test_retrospective_conviction_loss(self):
         engine = JournalEngine()
-        retro = engine._generate_retrospective("poor", "movers_signal", "conviction_collapse", -3.0, -15.0)
+        retro = engine._generate_retrospective("poor", "pulse_signal", "conviction_collapse", -3.0, -15.0)
         assert "tighter" in retro.lower() or "faster" in retro.lower()

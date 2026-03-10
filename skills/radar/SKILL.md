@@ -83,8 +83,8 @@ RULES:
 | Score Range | Interpretation | Action |
 |-------------|---------------|--------|
 | 250-400 | Elite setup — rare, strong multi-pillar confluence | Immediate entry candidate for WOLF |
-| 170-250 | Good setup — solid edge | Standard entry if Movers confirms |
-| 140-170 | Marginal — needs confirmation | Queue only, wait for Movers signal |
+| 170-250 | Good setup — solid edge | Standard entry if Pulse confirms |
+| 140-170 | Marginal — needs confirmation | Queue only, wait for Pulse signal |
 | 100-140 | Weak — one pillar carrying | Skip — insufficient edge |
 | 0-100 | No edge | Ignore completely |
 
@@ -113,7 +113,7 @@ RULES:
 
 ## Composition
 
-Radar is a sub-component of WOLF (runs every 15 ticks). Can also be used standalone for manual trade selection. Pairs with Movers for confirmation — Radar finds setups, Movers detects timing.
+Radar is a sub-component of WOLF (runs every 15 ticks). Can also be used standalone for manual trade selection. Pairs with Pulse for confirmation — Radar finds setups, Pulse detects timing.
 
 ## Cron Template
 

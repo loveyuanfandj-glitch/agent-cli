@@ -161,10 +161,10 @@ class TestEntryLogic:
     def setup_method(self):
         self.engine = WolfEngine(WolfConfig(
             radar_score_threshold=170,
-            movers_confidence_threshold=70.0,
+            pulse_confidence_threshold=70.0,
         ))
 
-    def test_movers_immediate_entry(self):
+    def test_pulse_immediate_entry(self):
         state = _make_state()
         movers = [{
             "asset": "ETH",
@@ -177,7 +177,7 @@ class TestEntryLogic:
         entries = [a for a in actions if a.action == "enter"]
         assert len(entries) == 1
         assert entries[0].instrument == "ETH-PERP"
-        assert entries[0].source == "movers_immediate"
+        assert entries[0].source == "pulse_immediate"
 
     def test_radar_entry(self):
         state = _make_state()
@@ -201,7 +201,7 @@ class TestEntryLogic:
         entries = [a for a in actions if a.action == "enter"]
         assert len(entries) == 0
 
-    def test_movers_signal_entry(self):
+    def test_pulse_signal_entry(self):
         state = _make_state()
         movers = [{
             "asset": "DOGE",
@@ -213,9 +213,9 @@ class TestEntryLogic:
         actions = self.engine.evaluate(state, movers, [], {}, {})
         entries = [a for a in actions if a.action == "enter"]
         assert len(entries) == 1
-        assert entries[0].source == "movers_signal"
+        assert entries[0].source == "pulse_signal"
 
-    def test_movers_signal_below_threshold_skipped(self):
+    def test_pulse_signal_below_threshold_skipped(self):
         state = _make_state()
         movers = [{
             "asset": "DOGE",
@@ -308,7 +308,7 @@ class TestEntryLogic:
 
 
 class TestPriorityOrder:
-    def test_movers_immediate_before_radar(self):
+    def test_pulse_immediate_before_radar(self):
         engine = WolfEngine(WolfConfig(max_slots=1))
         state = _make_state(max_slots=1)
 
@@ -324,9 +324,9 @@ class TestPriorityOrder:
         entries = [a for a in actions if a.action == "enter"]
         assert len(entries) == 1
         assert entries[0].instrument == "ETH-PERP"
-        assert entries[0].source == "movers_immediate"
+        assert entries[0].source == "pulse_immediate"
 
-    def test_radar_before_movers_signal(self):
+    def test_radar_before_pulse_signal(self):
         engine = WolfEngine(WolfConfig(max_slots=1))
         state = _make_state(max_slots=1)
 

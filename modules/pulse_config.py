@@ -1,4 +1,4 @@
-"""Emerging movers detector configuration — thresholds, weights, and presets."""
+"""Pulse detector configuration — thresholds, weights, and presets."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -6,8 +6,8 @@ from typing import Any, Dict
 
 
 @dataclass
-class MoversConfig:
-    """Configuration for the emerging movers detector."""
+class PulseConfig:
+    """Configuration for the Pulse detector."""
 
     # OI Delta thresholds
     oi_delta_immediate_pct: float = 15.0
@@ -44,12 +44,12 @@ class MoversConfig:
     scan_history_size: int = 30
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "MoversConfig":
+    def from_dict(cls, d: Dict[str, Any]) -> "PulseConfig":
         valid = {f for f in cls.__dataclass_fields__}
         return cls(**{k: v for k, v in d.items() if k in valid})
 
     @classmethod
-    def from_yaml(cls, path: str) -> "MoversConfig":
+    def from_yaml(cls, path: str) -> "PulseConfig":
         import yaml
         with open(path) as f:
             data = yaml.safe_load(f) or {}
@@ -59,9 +59,9 @@ class MoversConfig:
         return {k: getattr(self, k) for k in self.__dataclass_fields__}
 
 
-MOVERS_PRESETS: Dict[str, MoversConfig] = {
-    "default": MoversConfig(),
-    "sensitive": MoversConfig(
+PULSE_PRESETS: Dict[str, PulseConfig] = {
+    "default": PulseConfig(),
+    "sensitive": PulseConfig(
         oi_delta_immediate_pct=10.0,
         oi_delta_breakout_pct=5.0,
         volume_surge_ratio=2.0,

@@ -23,7 +23,7 @@ class Adjustment:
 # Guardrail bounds — no parameter goes beyond these
 _BOUNDS = {
     "radar_score_threshold": (120, 280),
-    "movers_confidence_threshold": (40.0, 95.0),
+    "pulse_confidence_threshold": (40.0, 95.0),
     "daily_loss_limit": (50.0, 5000.0),
 }
 
@@ -53,18 +53,18 @@ def adapt(
                             "FDR critical (>30%): raise radar threshold")
         if adj:
             adjustments.append(adj)
-        if getattr(config, "movers_immediate_auto_entry", True):
+        if getattr(config, "pulse_immediate_auto_entry", True):
             adjustments.append(Adjustment(
-                param="movers_immediate_auto_entry",
+                param="pulse_immediate_auto_entry",
                 old_value=True, new_value=False,
                 reason="FDR critical: disable immediate mover entries",
             ))
 
     # 3. FDR > 20% — moderate warning
     elif metrics.fdr > 20:
-        adj = _clamp_adjust(config, "movers_confidence_threshold",
-                            getattr(config, "movers_confidence_threshold") + 5,
-                            "FDR warning (>20%): raise movers confidence bar")
+        adj = _clamp_adjust(config, "pulse_confidence_threshold",
+                            getattr(config, "pulse_confidence_threshold") + 5,
+                            "FDR warning (>20%): raise pulse confidence bar")
         if adj:
             adjustments.append(adj)
 
@@ -75,9 +75,9 @@ def adapt(
                             f"Win rate low ({metrics.win_rate:.0f}%): raise radar threshold")
         if adj:
             adjustments.append(adj)
-        adj2 = _clamp_adjust(config, "movers_confidence_threshold",
-                             getattr(config, "movers_confidence_threshold") + 10,
-                             f"Win rate low ({metrics.win_rate:.0f}%): raise movers confidence")
+        adj2 = _clamp_adjust(config, "pulse_confidence_threshold",
+                             getattr(config, "pulse_confidence_threshold") + 10,
+                             f"Win rate low ({metrics.win_rate:.0f}%): raise pulse confidence")
         if adj2:
             adjustments.append(adj2)
 
@@ -155,8 +155,8 @@ def _emergency_tighten(config) -> List[Adjustment]:
     """Emergency mode: tighten everything to stop bleeding."""
     adjs = []
     adjs.append(Adjustment(
-        param="movers_immediate_auto_entry",
-        old_value=getattr(config, "movers_immediate_auto_entry"),
+        param="pulse_immediate_auto_entry",
+        old_value=getattr(config, "pulse_immediate_auto_entry"),
         new_value=False,
         reason="EMERGENCY: disable all immediate entries",
     ))
@@ -164,8 +164,8 @@ def _emergency_tighten(config) -> List[Adjustment]:
                         "EMERGENCY: raise radar threshold to 250")
     if adj:
         adjs.append(adj)
-    adj2 = _clamp_adjust(config, "movers_confidence_threshold", 90.0,
-                         "EMERGENCY: raise movers confidence to 90")
+    adj2 = _clamp_adjust(config, "pulse_confidence_threshold", 90.0,
+                         "EMERGENCY: raise pulse confidence to 90")
     if adj2:
         adjs.append(adj2)
     return adjs
