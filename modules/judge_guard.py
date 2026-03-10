@@ -16,7 +16,7 @@ from parent.store import JSONLStore
 class JudgeGuard:
     """Runs judge evaluation and persists reports."""
 
-    def __init__(self, data_dir: str = "data/wolf"):
+    def __init__(self, data_dir: str = "data/apex"):
         self.data_dir = Path(data_dir)
         self._report_dir = self.data_dir / "judge"
         self._report_dir.mkdir(parents=True, exist_ok=True)

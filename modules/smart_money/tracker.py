@@ -37,7 +37,7 @@ class SmartMoneyTracker:
             hl: DirectHLProxy or DirectMockProxy (needs _info.user_state)
 
         Returns:
-            List of signal dicts compatible with WOLF pulse_signals format:
+            List of signal dicts compatible with APEX pulse_signals format:
             [{"asset": "ETH", "signal_type": "SMART_MONEY", "direction": "LONG", "confidence": 85.0,
               "source_addresses": ["0x..."], "notional_usd": 50000.0}]
         """

@@ -1,4 +1,4 @@
-"""REFLECT adapter — maps ReflectMetrics to WolfConfig parameter adjustments.
+"""REFLECT adapter — maps ReflectMetrics to ApexConfig parameter adjustments.
 
 Pure function, zero I/O. Takes metrics + current config, returns a dict
 of adjustments with reasons. Applies guardrails to prevent oscillation.

@@ -1,6 +1,6 @@
 """Judge engine — pure computation, zero I/O.
 
-Post-hoc evaluation of WOLF trading decisions. Scores signal quality,
+Post-hoc evaluation of APEX trading decisions. Scores signal quality,
 identifies false positives per signal source, evaluates Guard efficiency,
 builds playbook stats, and generates config recommendations.
 """

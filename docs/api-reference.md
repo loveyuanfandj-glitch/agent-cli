@@ -68,7 +68,7 @@ curl $AGENT_URL/health
 ```json
 {
   "status": "ok",
-  "mode": "wolf",
+  "mode": "apex",
   "uptime_s": 3842,
   "pid": 127,
   "alive": true
@@ -78,7 +78,7 @@ curl $AGENT_URL/health
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | Always `"ok"` if server is responding |
-| `mode` | string | `RUN_MODE` env var: `"wolf"`, `"strategy"`, or `"mcp"` |
+| `mode` | string | `RUN_MODE` env var: `"apex"`, `"strategy"`, or `"mcp"` |
 | `uptime_s` | int | Seconds since the entrypoint started |
 | `pid` | int\|null | PID of the child trading process |
 | `alive` | bool | Whether the child process is still running |
@@ -97,12 +97,12 @@ Primary status endpoint. Returns the agent's current state, positions, and PnL.
 curl $AGENT_URL/api/status
 ```
 
-**Response (WOLF mode):**
+**Response (APEX mode):**
 
 ```json
 {
   "status": "running",
-  "engine": "wolf",
+  "engine": "apex",
   "tick_count": 284,
   "daily_pnl": -12.50,
   "total_pnl": 342.00,
@@ -162,15 +162,15 @@ curl $AGENT_URL/api/status
 | Field | Mode | Type | Description |
 |-------|------|------|-------------|
 | `status` | Both | string | `"running"` or `"stopped"` |
-| `engine` | Both | string | Strategy ID (`"wolf"`, `"engine_mm"`, etc.) |
+| `engine` | Both | string | Strategy ID (`"apex"`, `"engine_mm"`, etc.) |
 | `tick_count` | Both | int | Number of evaluation cycles completed |
-| `daily_pnl` | WOLF | float | Today's profit/loss in USD |
-| `total_pnl` | WOLF | float | Cumulative profit/loss in USD |
-| `total_trades` | WOLF | int | Number of executed trades |
-| `max_slots` | WOLF | int | Maximum concurrent positions |
-| `active_slots` | WOLF | array | Currently open position details (full slot objects) |
-| `closed_slots` | WOLF | array | Last 5 closed positions |
-| `positions` | WOLF | array | Simplified position array for UI consumption |
+| `daily_pnl` | APEX | float | Today's profit/loss in USD |
+| `total_pnl` | APEX | float | Cumulative profit/loss in USD |
+| `total_trades` | APEX | int | Number of executed trades |
+| `max_slots` | APEX | int | Maximum concurrent positions |
+| `active_slots` | APEX | array | Currently open position details (full slot objects) |
+| `closed_slots` | APEX | array | Last 5 closed positions |
+| `positions` | APEX | array | Simplified position array for UI consumption |
 | `instrument` | Strategy | string | Trading instrument (e.g., `"ETH-PERP"`) |
 | `position_qty` | Strategy | float | Net position quantity (positive = long) |
 | `unrealized_pnl` | Strategy | float | Mark-to-market PnL |
@@ -178,7 +178,7 @@ curl $AGENT_URL/api/status
 | `total_orders` | Strategy | int | Orders placed this session |
 | `total_fills` | Strategy | int | Orders that filled |
 
-**Data source:** Reads from `$DATA_DIR/wolf/state.json` (WOLF mode) or `$DATA_DIR/cli/state.db` (strategy mode). These files are written by the trading engine after every tick.
+**Data source:** Reads from `$DATA_DIR/apex/state.json` (APEX mode) or `$DATA_DIR/cli/state.db` (strategy mode). These files are written by the trading engine after every tick.
 
 **Fallback behavior:** If the Python status reader fails, the Node.js server reads `state.json` directly as a fallback. The Python entrypoint has no fallback.
 
@@ -232,7 +232,7 @@ Each strategy includes its description, type, and `params` with default values. 
 
 ### `GET /status`
 
-Human-readable plain-text status. Calls `hl wolf status` internally.
+Human-readable plain-text status. Calls `hl apex status` internally.
 
 ```bash
 curl $AGENT_URL/status
@@ -241,7 +241,7 @@ curl $AGENT_URL/status
 **Response:**
 
 ```
-WOLF Orchestrator — default preset
+APEX Orchestrator — default preset
 Tick: 284 | Daily PnL: -$12.50 | Slots: 1/3
 
 Slot 0: VXX-USDYP LONG 2.5 @ 30.552 | ROE: +4.2% | Phase: Tier 2
@@ -249,7 +249,7 @@ Slot 1: (empty)
 Slot 2: (empty)
 ```
 
-Same output as running `hl wolf status` in a terminal. Useful for quick checks but not suitable for programmatic consumption — use `/api/status` instead.
+Same output as running `hl apex status` in a terminal. Useful for quick checks but not suitable for programmatic consumption — use `/api/status` instead.
 
 ---
 
@@ -369,9 +369,9 @@ curl -N $AGENT_URL/api/feed
 **Event format:**
 
 ```
-data: {"status":"running","engine":"wolf","tick_count":285,"daily_pnl":-11.20,...}
+data: {"status":"running","engine":"apex","tick_count":285,"daily_pnl":-11.20,...}
 
-data: {"status":"running","engine":"wolf","tick_count":286,"daily_pnl":-10.80,...}
+data: {"status":"running","engine":"apex","tick_count":286,"daily_pnl":-10.80,...}
 ```
 
 Each `data:` line contains the same JSON payload as `GET /api/status`. Events are separated by double newlines per the SSE specification.
@@ -389,7 +389,7 @@ The `X-Accel-Buffering: no` header prevents Nginx reverse proxies from buffering
 **Behavior:**
 - Emits immediately on first connect (current state)
 - Then emits only when `tick_count` changes (de-duplicated)
-- WOLF ticks every 60 seconds by default, so events arrive roughly every 60s
+- APEX ticks every 60 seconds by default, so events arrive roughly every 60s
 - Single-strategy ticks are configurable (default 10s), so events arrive more frequently
 - The connection stays open indefinitely until the client disconnects
 - `EventSource` auto-reconnects on connection loss (browser default behavior)
@@ -520,7 +520,7 @@ curl "http://localhost:8090/api/leaderboard?network=testnet"
     {
       "rank": 1,
       "address": "0xabcd...1234",
-      "display_name": "alpha-wolf",
+      "display_name": "alpha-apex",
       "pnl": 842.50,
       "account_value": 10842.50,
       "positions_count": 2,
@@ -779,21 +779,21 @@ Args: { "mock": false }
 
 Returns scored opportunities with market structure, technicals, and funding analysis.
 
-#### `wolf_status()`
+#### `apex_status()`
 
-Get WOLF orchestrator status (slots, positions, daily PnL).
+Get APEX orchestrator status (slots, positions, daily PnL).
 
 ```
-Tool: wolf_status
+Tool: apex_status
 Args: (none)
 ```
 
-#### `wolf_run(mock, max_ticks, preset, mainnet)`
+#### `apex_run(mock, max_ticks, preset, mainnet)`
 
-Start the WOLF multi-slot orchestrator.
+Start the APEX multi-slot orchestrator.
 
 ```
-Tool: wolf_run
+Tool: apex_run
 Args: {
   "preset": "default",
   "mock": true,
@@ -854,7 +854,7 @@ Tool: judge_report
 Args: (none)
 ```
 
-Returns the most recent Judge analysis, or `{"status": "no_reports"}` if WOLF hasn't run long enough to generate one.
+Returns the most recent Judge analysis, or `{"status": "no_reports"}` if APEX hasn't run long enough to generate one.
 
 #### `obsidian_context()`
 
@@ -873,10 +873,10 @@ Requires an Obsidian vault at `~/obsidian-vault`. Returns `{"status": "unavailab
 
 If you have filesystem access to the agent (SSH, mounted volume, same container), you can read the state files directly without going through the API.
 
-### WOLF State
+### APEX State
 
 ```bash
-cat $DATA_DIR/wolf/state.json | python -m json.tool
+cat $DATA_DIR/apex/state.json | python -m json.tool
 ```
 
 Contains: `tick_count`, `slots[]`, `daily_pnl`, `total_pnl`, `total_trades`, `preset`, `config`.
@@ -885,7 +885,7 @@ Contains: `tick_count`, `slots[]`, `daily_pnl`, `total_pnl`, `total_trades`, `pr
 
 ```bash
 # Last 10 trades
-tail -10 $DATA_DIR/wolf/trades.jsonl
+tail -10 $DATA_DIR/apex/trades.jsonl
 ```
 
 Each line is a JSON object:
@@ -979,8 +979,8 @@ with requests.get(f"{AGENT}/api/feed", stream=True) as r:
 import requests
 
 agents = [
-    {"name": "wolf-alpha", "url": "https://wolf-alpha.up.railway.app"},
-    {"name": "wolf-beta", "url": "https://wolf-beta.up.railway.app"},
+    {"name": "apex-alpha", "url": "https://apex-alpha.up.railway.app"},
+    {"name": "apex-beta", "url": "https://apex-beta.up.railway.app"},
 ]
 
 for agent in agents:
@@ -1057,8 +1057,8 @@ else:
 | `trade` | Subprocess | 1-5s | Places order on HL |
 | `run_strategy` | Subprocess | Minutes+ | Runs trading loop |
 | `radar_run` | Subprocess | 10-30s | None |
-| `wolf_status` | Subprocess | <1s | None |
-| `wolf_run` | Subprocess | Minutes+ | Runs WOLF loop |
+| `apex_status` | Subprocess | <1s | None |
+| `apex_run` | Subprocess | Minutes+ | Runs APEX loop |
 | `reflect_run` | Subprocess | 5-15s | None |
 | `agent_memory` | Fast | <100ms | None |
 | `trade_journal` | Fast | <100ms | None |

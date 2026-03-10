@@ -1,4 +1,4 @@
-"""WolfEngine — pure decision engine for multi-slot trading (zero I/O).
+"""ApexEngine — pure decision engine for multi-slot trading (zero I/O).
 
 Given state + signals + prices, returns a list of actions to execute.
 """
@@ -8,13 +8,13 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from modules.wolf_config import WolfConfig
-from modules.wolf_state import WolfSlot, WolfState
+from modules.apex_config import ApexConfig
+from modules.apex_state import ApexSlot, ApexState
 
 
 @dataclass
-class WolfAction:
-    """A single action the WOLF runner should execute."""
+class ApexAction:
+    """A single action the APEX runner should execute."""
     action: str             # "enter", "exit", "noop"
     slot_id: int = -1
     instrument: str = ""
@@ -26,22 +26,22 @@ class WolfAction:
     execution_algo: str = "immediate"  # "immediate" or "twap"
 
 
-class WolfEngine:
-    """Stateless WOLF decision engine. Zero I/O."""
+class ApexEngine:
+    """Stateless APEX decision engine. Zero I/O."""
 
-    def __init__(self, config: WolfConfig):
+    def __init__(self, config: ApexConfig):
         self.config = config
 
     def evaluate(
         self,
-        state: WolfState,
+        state: ApexState,
         pulse_signals: List[Dict[str, Any]],
         scanner_opps: List[Dict[str, Any]],
         slot_prices: Dict[int, float],
         slot_dsl_results: Dict[int, Dict[str, Any]],
         now_ms: int = 0,
         smart_money_signals: Optional[List[Dict[str, Any]]] = None,
-    ) -> List[WolfAction]:
+    ) -> List[ApexAction]:
         """Evaluate all positions and signals, return ordered actions.
 
         Priority: risk gate → exits → entries.
@@ -49,13 +49,13 @@ class WolfEngine:
         if now_ms == 0:
             now_ms = int(time.time() * 1000)
 
-        actions: List[WolfAction] = []
+        actions: List[ApexAction] = []
         cfg = self.config
 
         # 1. Risk gate: daily loss limit
         if state.daily_pnl <= -cfg.daily_loss_limit or state.daily_loss_triggered:
             for slot in state.active_slots():
-                actions.append(WolfAction(
+                actions.append(ApexAction(
                     action="exit", slot_id=slot.slot_id,
                     instrument=slot.instrument, direction=slot.direction,
                     reason="daily_loss_limit",
@@ -84,13 +84,13 @@ class WolfEngine:
 
     def _check_exit(
         self,
-        slot: WolfSlot,
+        slot: ApexSlot,
         pulse_signals: List[Dict],
         scanner_opps: List[Dict],
         current_price: float,
         dsl_result: Dict,
         now_ms: int,
-    ) -> Optional[WolfAction]:
+    ) -> Optional[ApexAction]:
         """Check exit conditions for one active slot."""
         cfg = self.config
 
@@ -108,7 +108,7 @@ class WolfEngine:
 
         # 1. DSL close
         if dsl_result.get("action") == "close":
-            return WolfAction(
+            return ApexAction(
                 action="exit", slot_id=slot.slot_id,
                 instrument=slot.instrument, direction=slot.direction,
                 reason=f"guard_close: {dsl_result.get('reason', '')}",
@@ -116,7 +116,7 @@ class WolfEngine:
 
         # 2. Hard stop
         if slot.current_roe <= cfg.max_negative_roe:
-            return WolfAction(
+            return ApexAction(
                 action="exit", slot_id=slot.slot_id,
                 instrument=slot.instrument, direction=slot.direction,
                 reason=f"hard_stop: ROE {slot.current_roe:.1f}%",
@@ -142,7 +142,7 @@ class WolfEngine:
             if slot.signal_disappeared_ts > 0 and slot.current_roe < 0:
                 elapsed_min = (now_ms - slot.signal_disappeared_ts) / 60_000
                 if elapsed_min >= cfg.conviction_collapse_minutes:
-                    return WolfAction(
+                    return ApexAction(
                         action="exit", slot_id=slot.slot_id,
                         instrument=slot.instrument, direction=slot.direction,
                         reason=f"conviction_collapse: {elapsed_min:.0f}min no signal, ROE={slot.current_roe:.1f}%",
@@ -152,7 +152,7 @@ class WolfEngine:
         if slot.current_roe >= cfg.stagnation_min_roe and slot.last_progress_ts > 0:
             stagnation_min = (now_ms - slot.last_progress_ts) / 60_000
             if stagnation_min >= cfg.stagnation_minutes:
-                return WolfAction(
+                return ApexAction(
                     action="exit", slot_id=slot.slot_id,
                     instrument=slot.instrument, direction=slot.direction,
                     reason=f"stagnation_tp: ROE={slot.current_roe:.1f}% stuck for {stagnation_min:.0f}min",
@@ -162,15 +162,15 @@ class WolfEngine:
 
     def _evaluate_entries(
         self,
-        state: WolfState,
+        state: ApexState,
         pulse_signals: List[Dict],
         scanner_opps: List[Dict],
         now_ms: int,
         smart_money_signals: Optional[List[Dict[str, Any]]] = None,
-    ) -> List[WolfAction]:
+    ) -> List[ApexAction]:
         """Evaluate potential new entries."""
         cfg = self.config
-        actions: List[WolfAction] = []
+        actions: List[ApexAction] = []
         active_instruments = state.active_instruments()
 
         # Collect candidates in priority order
@@ -259,7 +259,7 @@ class WolfEngine:
             notional = cfg.margin_per_slot * cfg.leverage
             exec_algo = "twap" if notional > cfg.twap_threshold_usd else "immediate"
 
-            actions.append(WolfAction(
+            actions.append(ApexAction(
                 action="enter",
                 slot_id=slot.slot_id,
                 instrument=cand["instrument"],

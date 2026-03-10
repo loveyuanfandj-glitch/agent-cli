@@ -1,6 +1,6 @@
 ---
 name: yex-trader
-description: Autonomous Hyperliquid trading — 14 strategies (MM, momentum, arbitrage, LLM) with WOLF multi-slot orchestrator, REFLECT performance review, DSL trailing stops, and builder fee revenue collection.
+description: Autonomous Hyperliquid trading — 14 strategies (MM, momentum, arbitrage, LLM) with APEX multi-slot orchestrator, REFLECT performance review, DSL trailing stops, and builder fee revenue collection.
 user-invocable: true
 argument-hint: "<strategy> [options]"
 allowed-tools:
@@ -17,7 +17,7 @@ metadata:
 
 # YEX Trader
 
-Autonomous Hyperliquid trading via agent-cli. 14 strategies across market making, momentum, arbitrage, and LLM-powered trading. WOLF multi-slot orchestrator. REFLECT nightly performance review. Builder fee revenue collection.
+Autonomous Hyperliquid trading via agent-cli. 14 strategies across market making, momentum, arbitrage, and LLM-powered trading. APEX multi-slot orchestrator. REFLECT nightly performance review. Builder fee revenue collection.
 
 ## Quick Start (Agent-Friendly)
 
@@ -62,7 +62,7 @@ hl builder approve
 ```bash
 hl run avellaneda_mm -i VXX-USDYP --tick 15          # YEX yield market
 hl run engine_mm -i ETH-PERP --tick 10                # Standard perp
-hl wolf run --mock --max-ticks 5                       # WOLF multi-slot
+hl apex run --mock --max-ticks 5                       # APEX multi-slot
 ```
 
 ### Getting Started — Mainnet
@@ -82,7 +82,7 @@ hl builder approve --mainnet
 ```bash
 hl run engine_mm -i ETH-PERP --tick 10 --mainnet      # ETH perp
 hl run avellaneda_mm -i BTC-PERP --tick 10 --mainnet   # BTC perp
-hl wolf run --mainnet                                   # WOLF multi-slot
+hl apex run --mainnet                                   # APEX multi-slot
 ```
 
 ### Environment Variables
@@ -120,13 +120,13 @@ hl status [--watch] [--interval 5]
 hl strategies
 ```
 
-### WOLF Multi-Slot Orchestrator
+### APEX Multi-Slot Orchestrator
 
 ```bash
-hl wolf run [-t 60] [--preset conservative|default|aggressive] [--mock] [--budget 1000] [--slots 5]
-hl wolf once [--mock]
-hl wolf status
-hl wolf presets
+hl apex run [-t 60] [--preset conservative|default|aggressive] [--mock] [--budget 1000] [--slots 5]
+hl apex once [--mock]
+hl apex status
+hl apex presets
 ```
 
 ### REFLECT Performance Review
@@ -186,7 +186,7 @@ hl mcp serve                         # Start MCP server (stdio transport)
 hl mcp serve --transport sse         # Start MCP server (SSE transport)
 ```
 
-Tools: `strategies`, `builder_status`, `wallet_list`, `wallet_auto`, `setup_check`, `account`, `status`, `trade`, `run_strategy`, `radar_run`, `wolf_status`, `wolf_run`, `reflect_run`, `agent_memory`, `trade_journal`, `judge_report`
+Tools: `strategies`, `builder_status`, `wallet_list`, `wallet_auto`, `setup_check`, `account`, `status`, `trade`, `run_strategy`, `radar_run`, `apex_status`, `apex_run`, `reflect_run`, `agent_memory`, `trade_journal`, `judge_report`
 
 ## Strategies (14)
 
@@ -221,7 +221,7 @@ Tools: `strategies`, `builder_status`, `wallet_list`, `wallet_auto`, `setup_chec
 5. **Dry run**: `hl run engine_mm --dry-run --max-ticks 10`
 6. **Live testnet**: `hl run engine_mm -i ETH-PERP --tick 10`
 7. **Live mainnet**: `hl run engine_mm -i ETH-PERP --tick 10 --mainnet`
-8. **WOLF mode**: `hl wolf run --mainnet` or `hl wolf run --mock --max-ticks 5`
+8. **APEX mode**: `hl apex run --mainnet` or `hl apex run --mock --max-ticks 5`
 9. **Monitor**: `hl status --watch`
 10. **Review**: `hl reflect run`
 

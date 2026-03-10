@@ -14,7 +14,7 @@ from parent.store import JSONLStore
 class JournalGuard:
     """Persists trade journal entries to disk."""
 
-    def __init__(self, data_dir: str = "data/wolf"):
+    def __init__(self, data_dir: str = "data/apex"):
         self._store = JSONLStore(path=f"{data_dir}/journal.jsonl")
 
     def log_entry(self, entry: JournalEntry) -> None:

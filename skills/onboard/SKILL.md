@@ -214,17 +214,17 @@ hl status
 
 ---
 
-## Step 8: WOLF Multi-Slot (Optional)
+## Step 8: APEX Multi-Slot (Optional)
 
-After single-strategy validation, try the full WOLF orchestrator.
+After single-strategy validation, try the full APEX orchestrator.
 
 ```bash
-hl wolf run --mock --fresh --max-ticks 5
+hl apex run --mock --fresh --max-ticks 5
 ```
 
 Then live:
 ```bash
-hl wolf run --max-ticks 10
+hl apex run --max-ticks 10
 ```
 
 ---
@@ -245,7 +245,7 @@ Only after completing Steps 1-8 on testnet:
 
 - **Skipping builder fee approval** → Every order fails silently. Always approve first.
 - **Going mainnet without testnet validation** → Real money at risk with unverified setup.
-- **Running WOLF before single-strategy test** → WOLF composes multiple systems — if any sub-component fails, debugging is harder.
+- **Running APEX before single-strategy test** → APEX composes multiple systems — if any sub-component fails, debugging is harder.
 - **Ignoring password save** → Keystore password cannot be recovered. Lose it = lose wallet access.
 - **Not setting HL_KEYSTORE_PASSWORD** → CLI can't auto-unlock keystore. Every command will fail.
 
@@ -267,7 +267,7 @@ Only after completing Steps 1-8 on testnet:
 
 This skill is the entry point for all other skills. After completing onboarding:
 - **Trade**: `hl run <strategy>` — see strategies with `hl strategies`
-- **WOLF**: `hl wolf run` — multi-slot orchestrator
+- **APEX**: `hl apex run` — multi-slot orchestrator
 - **REFLECT**: `hl reflect run` — nightly performance review
 - **Radar**: `hl radar run` — find trading opportunities
 - **DSL**: `hl dsl start <instrument>` — trailing stop protection

@@ -1,4 +1,4 @@
-"""hl wolf — WOLF autonomous strategy commands."""
+"""hl apex — APEX autonomous strategy commands."""
 from __future__ import annotations
 
 import logging
@@ -8,11 +8,11 @@ from typing import Optional
 
 import typer
 
-wolf_app = typer.Typer(no_args_is_help=True)
+apex_app = typer.Typer(no_args_is_help=True)
 
 
-@wolf_app.command("run")
-def wolf_run(
+@apex_app.command("run")
+def apex_run(
     tick: float = typer.Option(60.0, "--tick", "-t", help="Seconds between ticks"),
     preset: Optional[str] = typer.Option(None, "--preset", "-p"),
     config: Optional[Path] = typer.Option(None, "--config", "-c"),
@@ -24,45 +24,45 @@ def wolf_run(
     budget: float = typer.Option(0, "--budget", help="Override total budget ($)"),
     slots: int = typer.Option(0, "--slots", help="Override max slots"),
     leverage: float = typer.Option(0, "--leverage", help="Override leverage"),
-    data_dir: str = typer.Option("data/wolf", "--data-dir"),
+    data_dir: str = typer.Option("data/apex", "--data-dir"),
 ):
-    """Start WOLF autonomous multi-slot strategy."""
-    _run_wolf(tick=tick, preset=preset, config=config, mock=mock,
+    """Start APEX autonomous multi-slot strategy."""
+    _run_apex(tick=tick, preset=preset, config=config, mock=mock,
               resume=resume, mainnet=mainnet, json_output=json_output,
               max_ticks=max_ticks, budget=budget, slots=slots,
               leverage=leverage, data_dir=data_dir)
 
 
-@wolf_app.command("once")
-def wolf_once(
+@apex_app.command("once")
+def apex_once(
     preset: Optional[str] = typer.Option(None, "--preset", "-p"),
     config: Optional[Path] = typer.Option(None, "--config", "-c"),
     mock: bool = typer.Option(False, "--mock"),
     mainnet: bool = typer.Option(False, "--mainnet"),
     json_output: bool = typer.Option(False, "--json"),
-    data_dir: str = typer.Option("data/wolf", "--data-dir"),
+    data_dir: str = typer.Option("data/apex", "--data-dir"),
 ):
-    """Run a single WOLF tick and exit."""
-    _run_wolf(tick=0, preset=preset, config=config, mock=mock,
+    """Run a single APEX tick and exit."""
+    _run_apex(tick=0, preset=preset, config=config, mock=mock,
               mainnet=mainnet, json_output=json_output, max_ticks=1,
               budget=0, slots=0, leverage=0, data_dir=data_dir, single=True)
 
 
-@wolf_app.command("status")
-def wolf_status(data_dir: str = typer.Option("data/wolf", "--data-dir")):
-    """Show current WOLF state and positions."""
+@apex_app.command("status")
+def apex_status(data_dir: str = typer.Option("data/apex", "--data-dir")):
+    """Show current APEX state and positions."""
     project_root = str(Path(__file__).resolve().parent.parent.parent)
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
 
-    from modules.wolf_state import WolfStateStore
+    from modules.apex_state import ApexStateStore
     import time as _time
 
-    store = WolfStateStore(path=f"{data_dir}/state.json")
+    store = ApexStateStore(path=f"{data_dir}/state.json")
     state = store.load()
 
     if not state:
-        typer.echo("No WOLF state found. Run 'hl wolf run' first.")
+        typer.echo("No APEX state found. Run 'hl apex run' first.")
         raise typer.Exit()
 
     active = state.active_slots()
@@ -83,16 +83,16 @@ def wolf_status(data_dir: str = typer.Option("data/wolf", "--data-dir")):
         typer.echo("\nNo active positions.")
 
 
-@wolf_app.command("presets")
-def wolf_presets():
-    """List available WOLF presets."""
+@apex_app.command("presets")
+def apex_presets():
+    """List available APEX presets."""
     project_root = str(Path(__file__).resolve().parent.parent.parent)
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
 
-    from modules.wolf_config import WOLF_PRESETS
+    from modules.apex_config import APEX_PRESETS
 
-    for name, cfg in WOLF_PRESETS.items():
+    for name, cfg in APEX_PRESETS.items():
         typer.echo(f"\n{name}:")
         typer.echo(f"  budget: ${cfg.total_budget:,.0f}")
         typer.echo(f"  max_slots: {cfg.max_slots}")
@@ -101,21 +101,21 @@ def wolf_presets():
         typer.echo(f"  daily_loss_limit: ${cfg.daily_loss_limit:,.0f}")
 
 
-def _run_wolf(tick, preset, config, mock, mainnet, json_output,
+def _run_apex(tick, preset, config, mock, mainnet, json_output,
               max_ticks, budget, slots, leverage, data_dir, single=False,
               resume=True):
     project_root = str(Path(__file__).resolve().parent.parent.parent)
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
 
-    from modules.wolf_config import WolfConfig, WOLF_PRESETS
+    from modules.apex_config import ApexConfig, APEX_PRESETS
 
     if config:
-        cfg = WolfConfig.from_yaml(str(config))
-    elif preset and preset in WOLF_PRESETS:
-        cfg = WolfConfig.from_dict(WOLF_PRESETS[preset].to_dict())
+        cfg = ApexConfig.from_yaml(str(config))
+    elif preset and preset in APEX_PRESETS:
+        cfg = ApexConfig.from_dict(APEX_PRESETS[preset].to_dict())
     else:
-        cfg = WolfConfig()
+        cfg = ApexConfig()
 
     # CLI overrides
     if budget > 0:
@@ -162,9 +162,9 @@ def _run_wolf(tick, preset, config, mock, mainnet, json_output,
     if _builder_info:
         typer.echo(f"Builder fee: {_bcfg.fee_bps} bps -> {_bcfg.builder_address[:10]}...")
 
-    from skills.wolf.scripts.standalone_runner import WolfRunner
+    from skills.apex.scripts.standalone_runner import ApexRunner
 
-    runner = WolfRunner(hl=hl, config=cfg, tick_interval=tick,
+    runner = ApexRunner(hl=hl, config=cfg, tick_interval=tick,
                         json_output=json_output, data_dir=data_dir,
                         builder=_builder_info, resume=resume)
 

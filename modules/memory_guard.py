@@ -1,7 +1,7 @@
 """Agent memory guard — I/O bridge for the memory system.
 
 Handles persistence of memory events (append-only JSONL) and the playbook
-(mutable JSON). Thread-safe for single-writer (WOLF tick loop).
+(mutable JSON). Thread-safe for single-writer (APEX tick loop).
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from parent.store import JSONLStore
 class MemoryGuard:
     """Persists agent memory events and playbook to disk."""
 
-    def __init__(self, data_dir: str = "data/wolf/memory"):
+    def __init__(self, data_dir: str = "data/apex/memory"):
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self._store = JSONLStore(path=str(self.data_dir / "memory.jsonl"))

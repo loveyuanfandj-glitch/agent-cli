@@ -180,7 +180,7 @@ RULES:
 
 ## Composition
 
-Guard is a sub-component of WOLF (runs every tick per active slot). Can also be used standalone to guard any position. When used with WOLF, Guard states are managed automatically. When used standalone, you must provide entry price, size, direction, and leverage.
+Guard is a sub-component of APEX (runs every tick per active slot). Can also be used standalone to guard any position. When used with APEX, Guard states are managed automatically. When used standalone, you must provide entry price, size, direction, and leverage.
 
 ## Cron Template
 

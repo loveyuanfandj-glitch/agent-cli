@@ -1,11 +1,11 @@
-"""Tests for smart money tracker and WOLF engine integration."""
+"""Tests for smart money tracker and APEX engine integration."""
 import pytest
 
 from modules.smart_money.config import SmartMoneyConfig
 from modules.smart_money.tracker import SmartMoneyTracker, WalletSnapshot
-from modules.wolf_config import WolfConfig
-from modules.wolf_engine import WolfEngine
-from modules.wolf_state import WolfState
+from modules.apex_config import ApexConfig
+from modules.apex_engine import ApexEngine
+from modules.apex_state import ApexState
 
 
 # ---------------------------------------------------------------------------
@@ -341,17 +341,17 @@ class TestConfidenceCalculation:
 
 
 # ---------------------------------------------------------------------------
-# Tests: WOLF engine integration with smart money signals
+# Tests: APEX engine integration with smart money signals
 # ---------------------------------------------------------------------------
 
-class TestWolfEngineSmartMoney:
-    """Smart money signals flow through WOLF engine entry evaluation."""
+class TestApexEngineSmartMoney:
+    """Smart money signals flow through APEX engine entry evaluation."""
 
     def _make_state(self, max_slots=3):
-        return WolfState.new(max_slots)
+        return ApexState.new(max_slots)
 
     def test_smart_money_entry(self):
-        engine = WolfEngine(WolfConfig())
+        engine = ApexEngine(ApexConfig())
         state = self._make_state()
 
         sm_signals = [{
@@ -371,7 +371,7 @@ class TestWolfEngineSmartMoney:
 
     def test_high_conviction_beats_scanner(self):
         """HIGH_CONVICTION (priority 1.5) should beat scanner (priority 2)."""
-        engine = WolfEngine(WolfConfig(max_slots=1))
+        engine = ApexEngine(ApexConfig(max_slots=1))
         state = self._make_state(max_slots=1)
 
         scanner = [{"asset": "SOL", "direction": "LONG", "final_score": 200}]
@@ -390,7 +390,7 @@ class TestWolfEngineSmartMoney:
         assert entries[0].instrument == "ETH-PERP"
 
     def test_smart_money_below_confidence_skipped(self):
-        engine = WolfEngine(WolfConfig())
+        engine = ApexEngine(ApexConfig())
         state = self._make_state()
 
         sm_signals = [{
@@ -406,7 +406,7 @@ class TestWolfEngineSmartMoney:
 
     def test_backward_compatible_no_smart_money(self):
         """Engine works fine without smart_money_signals parameter."""
-        engine = WolfEngine(WolfConfig())
+        engine = ApexEngine(ApexConfig())
         state = self._make_state()
 
         # No smart_money_signals param at all
@@ -415,7 +415,7 @@ class TestWolfEngineSmartMoney:
 
     def test_pulse_immediate_still_beats_high_conviction(self):
         """Pulse IMMEDIATE (priority 1) still beats HIGH_CONVICTION (priority 1.5)."""
-        engine = WolfEngine(WolfConfig(max_slots=1))
+        engine = ApexEngine(ApexConfig(max_slots=1))
         state = self._make_state(max_slots=1)
 
         movers = [{

@@ -26,13 +26,13 @@ If balance is 0, tell the user: "Account has no balance. Run `hl setup claim-usd
 hl status
 ```
 
-5. **Check WOLF state (if exists):**
+5. **Check APEX state (if exists):**
 ```bash
-hl wolf status
+hl apex status
 ```
 
 6. **Report ready:**
-Send to user: "Agent ready. Balance: $X. Active positions: N. Say 'start trading' to begin WOLF, or ask me to scan for opportunities."
+Send to user: "Agent ready. Balance: $X. Active positions: N. Say 'start trading' to begin APEX, or ask me to scan for opportunities."
 
 ## On Failure
 

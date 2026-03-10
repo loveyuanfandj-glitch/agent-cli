@@ -1,4 +1,4 @@
-"""WOLF strategy configuration — budget, slots, risk, and presets."""
+"""APEX strategy configuration — budget, slots, risk, and presets."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Optional
 
 
 @dataclass
-class WolfConfig:
-    """Configuration for WOLF autonomous trading strategy."""
+class ApexConfig:
+    """Configuration for APEX autonomous trading strategy."""
 
     # Budget & Position Management
     total_budget: float = 10_000.0
@@ -83,31 +83,31 @@ class WolfConfig:
             self.margin_per_slot = self.total_budget / max(self.max_slots, 1)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "WolfConfig":
+    def from_dict(cls, d: Dict[str, Any]) -> "ApexConfig":
         valid = {f for f in cls.__dataclass_fields__}
         return cls(**{k: v for k, v in d.items() if k in valid})
 
     @classmethod
-    def from_yaml(cls, path: str) -> "WolfConfig":
+    def from_yaml(cls, path: str) -> "ApexConfig":
         import yaml
         with open(path) as f:
             data = yaml.safe_load(f) or {}
-        return cls.from_dict(data.get("wolf", data))
+        return cls.from_dict(data.get("apex", data.get("wolf", data)))
 
     def to_dict(self) -> Dict[str, Any]:
         return {k: getattr(self, k) for k in self.__dataclass_fields__}
 
 
-WOLF_PRESETS: Dict[str, WolfConfig] = {
-    "default": WolfConfig(),
-    "conservative": WolfConfig(
+APEX_PRESETS: Dict[str, ApexConfig] = {
+    "default": ApexConfig(),
+    "conservative": ApexConfig(
         max_slots=2,
         leverage=5.0,
         radar_score_threshold=190,
         pulse_confidence_threshold=80.0,
         daily_loss_limit=250.0,
     ),
-    "aggressive": WolfConfig(
+    "aggressive": ApexConfig(
         max_slots=3,
         leverage=15.0,
         radar_score_threshold=150,

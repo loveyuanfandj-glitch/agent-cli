@@ -2,7 +2,7 @@
 """Railway entrypoint — health check server + strategy runner.
 
 Starts a lightweight HTTP health server (required by Railway), then launches
-the configured trading mode (wolf, strategy, or mcp) as a subprocess.
+the configured trading mode (apex, strategy, or mcp) as a subprocess.
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ class HealthHandler(BaseHTTPRequestHandler):
         if self.path == "/health":
             body = json.dumps({
                 "status": "ok",
-                "mode": os.environ.get("RUN_MODE", "wolf"),
+                "mode": os.environ.get("RUN_MODE", "apex"),
                 "uptime_s": int(time.time() - START_TIME),
                 "pid": CHILD_PROC.pid if CHILD_PROC else None,
                 "alive": CHILD_PROC.poll() is None if CHILD_PROC else False,
@@ -38,7 +38,7 @@ class HealthHandler(BaseHTTPRequestHandler):
         elif self.path == "/status":
             try:
                 result = subprocess.run(
-                    [sys.executable, "-m", "cli.main", "wolf", "status"],
+                    [sys.executable, "-m", "cli.main", "apex", "status"],
                     capture_output=True, text=True, timeout=10,
                 )
                 output = result.stdout.strip() or result.stderr.strip() or "(no output)"
@@ -201,27 +201,27 @@ class HealthHandler(BaseHTTPRequestHandler):
 
 def build_command() -> list[str]:
     """Build the CLI command from environment variables."""
-    mode = os.environ.get("RUN_MODE", "wolf").lower()
+    mode = os.environ.get("RUN_MODE", "apex").lower()
     py = [sys.executable, "-m", "cli.main"]
 
-    if mode == "wolf":
-        cmd = py + ["wolf", "run"]
-        preset = os.environ.get("WOLF_PRESET")
+    if mode in ("apex", "wolf"):
+        cmd = py + ["apex", "run"]
+        preset = os.environ.get("APEX_PRESET")
         if preset:
             cmd += ["--preset", preset]
-        budget = os.environ.get("WOLF_BUDGET")
+        budget = os.environ.get("APEX_BUDGET")
         if budget:
             cmd += ["--budget", budget]
-        slots = os.environ.get("WOLF_SLOTS")
+        slots = os.environ.get("APEX_SLOTS")
         if slots:
             cmd += ["--slots", slots]
-        leverage = os.environ.get("WOLF_LEVERAGE")
+        leverage = os.environ.get("APEX_LEVERAGE")
         if leverage:
             cmd += ["--leverage", leverage]
         tick = os.environ.get("TICK_INTERVAL")
         if tick:
             cmd += ["--tick", tick]
-        data_dir = os.environ.get("DATA_DIR", "/data/wolf")
+        data_dir = os.environ.get("DATA_DIR", "/data/apex")
         cmd += ["--data-dir", data_dir]
         if os.environ.get("HL_TESTNET", "true").lower() == "false":
             cmd.append("--mainnet")
@@ -240,7 +240,7 @@ def build_command() -> list[str]:
         return py + ["mcp", "serve", "--transport", "sse"]
 
     else:
-        print(f"Unknown RUN_MODE: {mode}. Use wolf, strategy, or mcp.", file=sys.stderr)
+        print(f"Unknown RUN_MODE: {mode}. Use apex, wolf, strategy, or mcp.", file=sys.stderr)
         sys.exit(1)
 
 
@@ -290,7 +290,7 @@ def main():
 
     # Build and run main command
     cmd = build_command()
-    mode = os.environ.get("RUN_MODE", "wolf")
+    mode = os.environ.get("RUN_MODE", "apex")
     print(f"[entrypoint] Starting {mode} mode: {' '.join(cmd)}")
 
     CHILD_PROC = subprocess.Popen(cmd)

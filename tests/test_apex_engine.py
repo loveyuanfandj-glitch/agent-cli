@@ -1,14 +1,14 @@
-"""Tests for modules/wolf_engine.py — decision engine with synthetic data."""
+"""Tests for modules/apex_engine.py — decision engine with synthetic data."""
 import pytest
 
-from modules.wolf_config import WolfConfig, WOLF_PRESETS
-from modules.wolf_engine import WolfAction, WolfEngine
-from modules.wolf_state import WolfSlot, WolfState
+from modules.apex_config import ApexConfig, APEX_PRESETS
+from modules.apex_engine import ApexAction, ApexEngine
+from modules.apex_state import ApexSlot, ApexState
 
 
 def _make_state(max_slots=3, slots=None):
-    """Build a WolfState with optional pre-configured slots."""
-    state = WolfState.new(max_slots)
+    """Build a ApexState with optional pre-configured slots."""
+    state = ApexState.new(max_slots)
     if slots:
         for i, s in enumerate(slots):
             if i < len(state.slots):
@@ -40,7 +40,7 @@ def _active_slot(slot_id=0, instrument="ETH-PERP", direction="long",
 
 class TestRiskGate:
     def setup_method(self):
-        self.engine = WolfEngine(WolfConfig(daily_loss_limit=500.0))
+        self.engine = ApexEngine(ApexConfig(daily_loss_limit=500.0))
 
     def test_daily_loss_closes_all(self):
         state = _make_state(slots=[
@@ -73,7 +73,7 @@ class TestRiskGate:
 
 class TestExitLogic:
     def setup_method(self):
-        self.engine = WolfEngine(WolfConfig(max_negative_roe=-5.0))
+        self.engine = ApexEngine(ApexConfig(max_negative_roe=-5.0))
 
     def test_guard_close(self):
         state = _make_state(slots=[_active_slot(0, "ETH-PERP")])
@@ -108,8 +108,8 @@ class TestExitLogic:
 
     def test_conviction_collapse(self):
         """Signal disappeared + negative ROE + timeout → exit."""
-        cfg = WolfConfig(conviction_collapse_minutes=30)
-        engine = WolfEngine(cfg)
+        cfg = ApexConfig(conviction_collapse_minutes=30)
+        engine = ApexEngine(cfg)
 
         now_ms = 100_000_000
         disappeared_ts = now_ms - 31 * 60_000  # 31 min ago
@@ -125,8 +125,8 @@ class TestExitLogic:
         assert len(exits) == 1
 
     def test_no_conviction_collapse_when_signal_present(self):
-        cfg = WolfConfig(conviction_collapse_minutes=30)
-        engine = WolfEngine(cfg)
+        cfg = ApexConfig(conviction_collapse_minutes=30)
+        engine = ApexEngine(cfg)
 
         now_ms = 100_000_000
         state = _make_state(slots=[
@@ -141,8 +141,8 @@ class TestExitLogic:
         assert len(exits) == 0
 
     def test_stagnation_tp(self):
-        cfg = WolfConfig(stagnation_minutes=60, stagnation_min_roe=3.0)
-        engine = WolfEngine(cfg)
+        cfg = ApexConfig(stagnation_minutes=60, stagnation_min_roe=3.0)
+        engine = ApexEngine(cfg)
 
         now_ms = 100_000_000
         stale_ts = now_ms - 61 * 60_000  # 61 min ago
@@ -159,7 +159,7 @@ class TestExitLogic:
 
 class TestEntryLogic:
     def setup_method(self):
-        self.engine = WolfEngine(WolfConfig(
+        self.engine = ApexEngine(ApexConfig(
             radar_score_threshold=170,
             pulse_confidence_threshold=70.0,
         ))
@@ -242,8 +242,8 @@ class TestEntryLogic:
         assert len(entries) == 0
 
     def test_direction_limit(self):
-        cfg = WolfConfig(max_same_direction=2)
-        engine = WolfEngine(cfg)
+        cfg = ApexConfig(max_same_direction=2)
+        engine = ApexEngine(cfg)
 
         state = _make_state(slots=[
             _active_slot(0, "ETH-PERP", direction="long"),
@@ -291,8 +291,8 @@ class TestEntryLogic:
         assert len(entries) == 0
 
     def test_excluded_instruments(self):
-        cfg = WolfConfig(excluded_instruments=["MEME-PERP"])
-        engine = WolfEngine(cfg)
+        cfg = ApexConfig(excluded_instruments=["MEME-PERP"])
+        engine = ApexEngine(cfg)
 
         state = _make_state()
         movers = [{
@@ -309,7 +309,7 @@ class TestEntryLogic:
 
 class TestPriorityOrder:
     def test_pulse_immediate_before_radar(self):
-        engine = WolfEngine(WolfConfig(max_slots=1))
+        engine = ApexEngine(ApexConfig(max_slots=1))
         state = _make_state(max_slots=1)
 
         movers = [{
@@ -327,7 +327,7 @@ class TestPriorityOrder:
         assert entries[0].source == "pulse_immediate"
 
     def test_radar_before_pulse_signal(self):
-        engine = WolfEngine(WolfConfig(max_slots=1))
+        engine = ApexEngine(ApexConfig(max_slots=1))
         state = _make_state(max_slots=1)
 
         movers = [{
@@ -347,14 +347,14 @@ class TestPriorityOrder:
 
 class TestSlotManagement:
     def test_empty_state(self):
-        engine = WolfEngine(WolfConfig())
+        engine = ApexEngine(ApexConfig())
         state = _make_state()
         actions = engine.evaluate(state, [], [], {}, {})
         assert actions == []
 
     def test_entry_marks_slot_entering(self):
         """After evaluation, entered slot should be marked as entering."""
-        engine = WolfEngine(WolfConfig())
+        engine = ApexEngine(ApexConfig())
         state = _make_state()
 
         movers = [{
@@ -371,8 +371,8 @@ class TestSlotManagement:
 
 class TestROEUpdate:
     def test_long_roe_calculation(self):
-        cfg = WolfConfig(leverage=10.0)
-        engine = WolfEngine(cfg)
+        cfg = ApexConfig(leverage=10.0)
+        engine = ApexEngine(cfg)
 
         state = _make_state(slots=[
             _active_slot(0, "ETH-PERP", direction="long", entry_price=2500.0),
@@ -385,8 +385,8 @@ class TestROEUpdate:
         assert state.slots[0].current_roe == pytest.approx(10.0)
 
     def test_short_roe_calculation(self):
-        cfg = WolfConfig(leverage=10.0)
-        engine = WolfEngine(cfg)
+        cfg = ApexConfig(leverage=10.0)
+        engine = ApexEngine(cfg)
 
         state = _make_state(slots=[
             _active_slot(0, "ETH-PERP", direction="short", entry_price=2500.0),
@@ -399,8 +399,8 @@ class TestROEUpdate:
         assert state.slots[0].current_roe == pytest.approx(10.0)
 
     def test_high_water_mark_updates(self):
-        cfg = WolfConfig(leverage=10.0)
-        engine = WolfEngine(cfg)
+        cfg = ApexConfig(leverage=10.0)
+        engine = ApexEngine(cfg)
 
         state = _make_state(slots=[
             _active_slot(0, "ETH-PERP", direction="long", entry_price=2500.0,
@@ -415,24 +415,24 @@ class TestROEUpdate:
 
 class TestConfigPresets:
     def test_presets_exist(self):
-        assert "default" in WOLF_PRESETS
-        assert "conservative" in WOLF_PRESETS
-        assert "aggressive" in WOLF_PRESETS
+        assert "default" in APEX_PRESETS
+        assert "conservative" in APEX_PRESETS
+        assert "aggressive" in APEX_PRESETS
 
     def test_conservative_tighter(self):
-        default = WOLF_PRESETS["default"]
-        conservative = WOLF_PRESETS["conservative"]
+        default = APEX_PRESETS["default"]
+        conservative = APEX_PRESETS["conservative"]
         assert conservative.max_slots <= default.max_slots
         assert conservative.leverage <= default.leverage
         assert conservative.daily_loss_limit <= default.daily_loss_limit
 
     def test_aggressive_looser(self):
-        default = WOLF_PRESETS["default"]
-        aggressive = WOLF_PRESETS["aggressive"]
+        default = APEX_PRESETS["default"]
+        aggressive = APEX_PRESETS["aggressive"]
         assert aggressive.leverage >= default.leverage
         assert aggressive.radar_score_threshold <= default.radar_score_threshold
         assert aggressive.daily_loss_limit >= default.daily_loss_limit
 
     def test_margin_auto_computed(self):
-        cfg = WolfConfig(total_budget=10_000, max_slots=5)
+        cfg = ApexConfig(total_budget=10_000, max_slots=5)
         assert cfg.margin_per_slot == pytest.approx(2000.0)

@@ -47,7 +47,7 @@ hl pulse presets           # List presets
 
 ## Agent Mandate
 
-You are the Pulse capital inflow detector. Your job is to catch capital inflow signals BEFORE the crowd. You detect timing — Radar detects setups. Together they form the WOLF entry pipeline.
+You are the Pulse capital inflow detector. Your job is to catch capital inflow signals BEFORE the crowd. You detect timing — Radar detects setups. Together they form the APEX entry pipeline.
 
 RULES:
 - IMMEDIATE_MOVER is the only signal strong enough for standalone entry
@@ -91,7 +91,7 @@ RULES:
 
 ## Composition
 
-Pulse is a sub-component of WOLF (runs every tick). Pairs with Radar — Radar identifies high-quality setups, Pulse detects the optimal entry timing via capital flow signals. When used standalone, always cross-check with `hl radar once`.
+Pulse is a sub-component of APEX (runs every tick). Pairs with Radar — Radar identifies high-quality setups, Pulse detects the optimal entry timing via capital flow signals. When used standalone, always cross-check with `hl radar once`.
 
 ## Cron Template
 

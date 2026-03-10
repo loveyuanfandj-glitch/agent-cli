@@ -1,4 +1,4 @@
-"""Read agent status from StateDB and WOLF state files.
+"""Read agent status from StateDB and APEX state files.
 
 Shared utility used by:
 - scripts/entrypoint.py (imported directly)
@@ -14,15 +14,15 @@ from typing import Any, Dict, List
 
 
 def read_status(data_dir: str = "data") -> Dict[str, Any]:
-    """Read unified agent status from StateDB + WOLF state.json.
+    """Read unified agent status from StateDB + APEX state.json.
 
     Checks both `{data_dir}/cli/state.db` (TradingEngine)
-    and `{data_dir}/wolf/state.json` (WOLF orchestrator).
+    and `{data_dir}/apex/state.json` (APEX orchestrator).
     """
     result: Dict[str, Any] = {"status": "stopped"}
 
-    # Try WOLF state first (higher priority — WOLF wraps strategies)
-    wolf_state = _read_wolf_state(f"{data_dir}/wolf")
+    # Try APEX state first (higher priority — APEX wraps strategies)
+    wolf_state = _read_apex_state(f"{data_dir}/apex")
     if wolf_state:
         result.update(wolf_state)
         result["status"] = "running"
@@ -38,8 +38,8 @@ def read_status(data_dir: str = "data") -> Dict[str, Any]:
     return result
 
 
-def _read_wolf_state(wolf_dir: str) -> Dict[str, Any] | None:
-    """Read WOLF orchestrator state from state.json."""
+def _read_apex_state(wolf_dir: str) -> Dict[str, Any] | None:
+    """Read APEX orchestrator state from state.json."""
     state_path = Path(wolf_dir) / "state.json"
     if not state_path.exists():
         return None
@@ -58,7 +58,7 @@ def _read_wolf_state(wolf_dir: str) -> Dict[str, Any] | None:
     override = _read_config_override(wolf_dir)
 
     return {
-        "engine": "wolf",
+        "engine": "apex",
         "tick_count": state.get("tick_count", 0),
         "daily_pnl": state.get("daily_pnl", 0.0),
         "total_pnl": state.get("total_pnl", 0.0),
@@ -261,7 +261,7 @@ def read_strategies() -> Dict[str, Any]:
 
 def read_trades(data_dir: str, limit: int = 50) -> Dict[str, Any]:
     """Read trades from trades.jsonl, newest-first, limited."""
-    trades_path = Path(data_dir) / "wolf" / "trades.jsonl"
+    trades_path = Path(data_dir) / "apex" / "trades.jsonl"
     if not trades_path.exists():
         return {"trades": [], "total": 0}
 
@@ -281,7 +281,7 @@ def read_trades(data_dir: str, limit: int = 50) -> Dict[str, Any]:
 
 def read_reflect(data_dir: str) -> Dict[str, Any]:
     """Read latest REFLECT report from reflect/ directory."""
-    reflect_dir = Path(data_dir) / "wolf" / "reflect"
+    reflect_dir = Path(data_dir) / "apex" / "reflect"
     if not reflect_dir.exists():
         return {"report": None, "report_name": None, "reports": []}
 
@@ -302,7 +302,7 @@ def read_reflect(data_dir: str) -> Dict[str, Any]:
 
 def read_scanner(data_dir: str) -> Dict[str, Any]:
     """Read radar history."""
-    primary = Path(data_dir) / "wolf" / "radar-history.json"
+    primary = Path(data_dir) / "apex" / "radar-history.json"
     fallback = Path(data_dir) / "radar" / "scan-history.json"
 
     scan_path = primary if primary.exists() else (fallback if fallback.exists() else None)
@@ -322,7 +322,7 @@ def read_scanner(data_dir: str) -> Dict[str, Any]:
 
 def read_journal(data_dir: str, limit: int = 50) -> Dict[str, Any]:
     """Read journal entries, newest-first."""
-    journal_path = Path(data_dir) / "wolf" / "journal.jsonl"
+    journal_path = Path(data_dir) / "apex" / "journal.jsonl"
     if not journal_path.exists():
         return {"entries": [], "total": 0}
 
@@ -342,7 +342,7 @@ def read_journal(data_dir: str, limit: int = 50) -> Dict[str, Any]:
 
 def write_config_override(data_dir: str, config: Dict[str, Any]) -> None:
     """Write config override for hot-reload by the runner."""
-    override_dir = Path(data_dir) / "wolf"
+    override_dir = Path(data_dir) / "apex"
     override_dir.mkdir(parents=True, exist_ok=True)
     override_path = override_dir / "config-override.json"
     with open(override_path, "w") as f:

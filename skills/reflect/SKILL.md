@@ -12,7 +12,7 @@ dependencies:
 
 # REFLECT — Reflect, Evaluate, Fine-tune, Learn, Evolve, Correct, Transform
 
-Nightly automated performance review engine. WOLF hunts all day — REFLECT reviews every trade at night, computing metrics, detecting patterns, and producing data-driven improvement recommendations.
+Nightly automated performance review engine. APEX runs all day — REFLECT reviews every trade at night, computing metrics, detecting patterns, and producing data-driven improvement recommendations.
 
 ## Architecture
 
@@ -51,7 +51,7 @@ hl reflect history -n 30            # Last 30 reports
 
 ## Agent Mandate
 
-You are the REFLECT reviewer. Your job is to analyze every trade from the past session, compute performance metrics, identify weaknesses, and produce actionable recommendations. You run nightly — the WOLF hunts by day, you review at night.
+You are the REFLECT reviewer. Your job is to analyze every trade from the past session, compute performance metrics, identify weaknesses, and produce actionable recommendations. You run nightly — the APEX runs by day, you review at night.
 
 RULES:
 - Run REFLECT every night after trading stops — no exceptions
@@ -73,13 +73,13 @@ RULES:
 | Win rate > 50% | OK | Entries are working |
 | Monster dep > 60% | WARNING | One trade carrying the session — diversify alpha |
 | Monster dep > 80% | CRITICAL | Fragile — entire PnL depends on one lucky trade |
-| Consec losses > 5 | WARNING | Add loss streak circuit breaker to WOLF |
+| Consec losses > 5 | WARNING | Add loss streak circuit breaker to APEX |
 | Long PnL < 0, Short PnL > 0 | WARNING | Long entries are leaking — reduce long bias |
 | Holding < 5 min dominates | WARNING | Over-trading — increase min hold time |
 
 ## Anti-Patterns
 
-- **Ignoring REFLECT reports**: Running WOLF without reviewing REFLECT is flying blind. The same mistakes repeat.
+- **Ignoring REFLECT reports**: Running APEX without reviewing REFLECT is flying blind. The same mistakes repeat.
 - **Acting on single-day anomalies**: One bad day doesn't mean the strategy is broken. Look at 5+ day trends via `hl reflect history`.
 - **Optimizing for win rate alone**: High win rate with low profit factor means you're taking small wins and large losses. Focus on PF.
 - **Not tracking FDR**: Fees are invisible during trading but compound devastatingly. FDR is the single most important "hidden" metric.
@@ -96,7 +96,7 @@ RULES:
 
 ## Composition
 
-REFLECT is the learning layer of the WOLF system. Run REFLECT nightly after WOLF stops. Feed REFLECT insights back into WOLF configuration (Radar thresholds, DSL presets, position sizing). Over time, REFLECT recommendations should converge as the system improves.
+REFLECT is the learning layer of the APEX system. Run REFLECT nightly after APEX stops. Feed REFLECT insights back into APEX configuration (Radar thresholds, DSL presets, position sizing). Over time, REFLECT recommendations should converge as the system improves.
 
 ## Cron Template
 

@@ -1,4 +1,4 @@
-"""WOLF standalone runner — multi-slot orchestrator tick loop.
+"""APEX standalone runner — multi-slot orchestrator tick loop.
 
 Composes radar + pulse + Guard + REFLECT into a single autonomous strategy.
 Each tick: fetch prices -> update ROEs -> check Guard -> run pulse -> evaluate.
@@ -32,17 +32,17 @@ from modules.memory_engine import MemoryEngine
 from modules.memory_guard import MemoryGuard
 from modules.pulse_guard import PulseGuard
 from modules.radar_guard import RadarGuard
-from modules.wolf_config import WolfConfig
-from modules.wolf_engine import WolfAction, WolfEngine
-from modules.wolf_state import WolfSlot, WolfState, WolfStateStore
+from modules.apex_config import ApexConfig
+from modules.apex_engine import ApexAction, ApexEngine
+from modules.apex_state import ApexSlot, ApexState, ApexStateStore
 from execution.portfolio_risk import PortfolioRiskManager, PortfolioRiskConfig
 from parent.store import JSONLStore
 
-log = logging.getLogger("wolf_runner")
+log = logging.getLogger("apex_runner")
 
 
-class WolfRunner:
-    """Autonomous WOLF strategy tick loop.
+class ApexRunner:
+    """Autonomous APEX strategy tick loop.
 
     Tick schedule (60s base):
       Every tick:      Fetch prices -> update ROEs -> check Guard -> run pulse -> evaluate
@@ -53,29 +53,29 @@ class WolfRunner:
     def __init__(
         self,
         hl,
-        config: Optional[WolfConfig] = None,
+        config: Optional[ApexConfig] = None,
         tick_interval: float = 60.0,
         json_output: bool = False,
-        data_dir: str = "data/wolf",
+        data_dir: str = "data/apex",
         builder: Optional[dict] = None,
         resume: bool = True,
     ):
         self.hl = hl
-        self.config = config or WolfConfig()
+        self.config = config or ApexConfig()
         self.tick_interval = tick_interval
         self.json_output = json_output
         self.data_dir = data_dir
         self.builder = builder
 
         # Core engine (pure, zero I/O)
-        self.engine = WolfEngine(self.config)
+        self.engine = ApexEngine(self.config)
 
         # State + persistence
-        self.state_store = WolfStateStore(path=f"{data_dir}/state.json")
+        self.state_store = ApexStateStore(path=f"{data_dir}/state.json")
         if resume:
-            self.state = self.state_store.load() or WolfState.new(self.config.max_slots)
+            self.state = self.state_store.load() or ApexState.new(self.config.max_slots)
         else:
-            self.state = WolfState.new(self.config.max_slots)
+            self.state = ApexState.new(self.config.max_slots)
 
         # Sub-guards
         self.pulse_guard = PulseGuard()
@@ -146,7 +146,7 @@ class WolfRunner:
         """Restore Guard bridges for active slots from persisted state."""
         guard_store = GuardStateStore(data_dir=f"{self.data_dir}/guard")
         for slot in self.state.active_slots():
-            pos_id = f"wolf-slot-{slot.slot_id}"
+            pos_id = f"apex-slot-{slot.slot_id}"
             guard = GuardBridge.from_store(pos_id, store=guard_store)
             if guard and guard.is_active:
                 self.guard_bridges[slot.slot_id] = guard
@@ -158,7 +158,7 @@ class WolfRunner:
         signal.signal(signal.SIGINT, self._handle_shutdown)
         signal.signal(signal.SIGTERM, self._handle_shutdown)
 
-        log.info("WOLF started: slots=%d leverage=%.0fx budget=$%.0f tick=%ds",
+        log.info("APEX started: slots=%d leverage=%.0fx budget=$%.0f tick=%ds",
                  self.config.max_slots, self.config.leverage,
                  self.config.total_budget, self.tick_interval)
 
@@ -189,9 +189,9 @@ class WolfRunner:
                 time.sleep(self.tick_interval)
 
         self._print_summary()
-        log.info("WOLF stopped after %d ticks", self.state.tick_count)
+        log.info("APEX stopped after %d ticks", self.state.tick_count)
 
-    def run_once(self) -> List[WolfAction]:
+    def run_once(self) -> List[ApexAction]:
         """Single tick pass — no loop."""
         actions = self._tick()
         self._print_status()
@@ -216,7 +216,7 @@ class WolfRunner:
             if override.get("preset"):
                 self.state.preset = override["preset"]
             if changed:
-                self.engine = WolfEngine(self.config)
+                self.engine = ApexEngine(self.config)
                 log.info("Config override applied: %s", ", ".join(changed))
             override_path.unlink()
         except Exception as e:
@@ -240,14 +240,14 @@ class WolfRunner:
         except Exception as e:
             log.debug("Account persist failed: %s", e)
 
-    def _tick(self) -> List[WolfAction]:
-        """Execute a single WOLF tick cycle."""
+    def _tick(self) -> List[ApexAction]:
+        """Execute a single APEX tick cycle."""
         self._check_config_override()
         self.state.tick_count += 1
         tick = self.state.tick_count
         now_ms = int(time.time() * 1000)
 
-        log.info("--- WOLF tick %d ---", tick)
+        log.info("--- APEX tick %d ---", tick)
 
         # 1. Fetch current prices for active slots
         slot_prices = self._fetch_slot_prices()
@@ -448,14 +448,14 @@ class WolfRunner:
         except Exception as e:
             log.warning("Watchdog check failed: %s", e)
 
-    def _execute_action(self, action: WolfAction) -> None:
-        """Execute a single WolfAction (enter or exit)."""
+    def _execute_action(self, action: ApexAction) -> None:
+        """Execute a single ApexAction (enter or exit)."""
         if action.action == "enter":
             self._execute_enter(action)
         elif action.action == "exit":
             self._execute_exit(action)
 
-    def _execute_enter(self, action: WolfAction) -> None:
+    def _execute_enter(self, action: ApexAction) -> None:
         """Execute an entry order."""
         slot = next((s for s in self.state.slots if s.slot_id == action.slot_id), None)
         if slot is None:
@@ -539,7 +539,7 @@ class WolfRunner:
             slot.status = "empty"
             slot.instrument = ""
 
-    def _execute_exit(self, action: WolfAction) -> None:
+    def _execute_exit(self, action: ApexAction) -> None:
         """Execute an exit order."""
         slot = next((s for s in self.state.slots if s.slot_id == action.slot_id), None)
         if slot is None or not slot.is_active():
@@ -582,7 +582,7 @@ class WolfRunner:
         except Exception as e:
             log.error("Exit failed for slot %d (%s): %s", slot.slot_id, action.instrument, e)
 
-    def _close_slot(self, slot: WolfSlot, reason: str, pnl: float) -> None:
+    def _close_slot(self, slot: ApexSlot, reason: str, pnl: float) -> None:
         """Reset a slot to empty and update PnL tracking."""
         # Close Guard bridge
         guard = self.guard_bridges.pop(slot.slot_id, None)
@@ -645,7 +645,7 @@ class WolfRunner:
         slot.current_roe = 0.0
         slot.high_water_roe = 0.0
 
-    def _create_guard_bridge(self, slot: WolfSlot) -> None:
+    def _create_guard_bridge(self, slot: ApexSlot) -> None:
         """Create a Guard bridge for a newly entered slot."""
         preset_name = self.config.guard_preset
         guard_config = GUARD_PRESETS.get(preset_name, GUARD_PRESETS.get("tight", GuardConfig()))
@@ -658,7 +658,7 @@ class WolfRunner:
             entry_price=slot.entry_price,
             position_size=slot.entry_size,
             direction=slot.direction,
-            position_id=f"wolf-slot-{slot.slot_id}",
+            position_id=f"apex-slot-{slot.slot_id}",
         )
 
         guard_store = GuardStateStore(data_dir=f"{self.data_dir}/guard")
@@ -671,14 +671,14 @@ class WolfRunner:
         """Append a trade record to the JSONL log."""
         self.trade_log.append({
             "tick": tick,
-            "oid": f"wolf-{tick}-{instrument}",
+            "oid": f"apex-{tick}-{instrument}",
             "instrument": instrument,
             "side": side,
             "price": str(price),
             "quantity": str(quantity),
             "timestamp_ms": int(time.time() * 1000),
             "fee": str(fee),
-            "strategy": "wolf",
+            "strategy": "apex",
             "meta": meta,
         })
 
@@ -737,7 +737,7 @@ class WolfRunner:
                     apply_adjustments(adjustments, self.config)
                     log.info(adj_log)
                     # Re-sync engine with updated config
-                    self.engine = WolfEngine(self.config)
+                    self.engine = ApexEngine(self.config)
 
                     # Log param changes to memory
                     try:
@@ -825,7 +825,7 @@ class WolfRunner:
                 pass
 
     def _print_status(self) -> None:
-        """Print current WOLF status."""
+        """Print current APEX status."""
         if self.json_output:
             import json
             print(json.dumps(self.state.to_dict(), indent=2))
@@ -833,7 +833,7 @@ class WolfRunner:
 
         active = self.state.active_slots()
         print(f"\n{'='*60}")
-        print(f"WOLF tick #{self.state.tick_count}  |  "
+        print(f"APEX tick #{self.state.tick_count}  |  "
               f"Active: {len(active)}/{self.config.max_slots}  |  "
               f"Daily PnL: ${self.state.daily_pnl:+.2f}  |  "
               f"Total PnL: ${self.state.total_pnl:+.2f}")
@@ -854,7 +854,7 @@ class WolfRunner:
     def _print_summary(self) -> None:
         """Print session summary on shutdown."""
         print(f"\n{'='*60}")
-        print("WOLF SESSION SUMMARY")
+        print("APEX SESSION SUMMARY")
         print(f"{'='*60}")
         print(f"  Ticks: {self.state.tick_count}")
         print(f"  Total trades: {self.state.total_trades}")

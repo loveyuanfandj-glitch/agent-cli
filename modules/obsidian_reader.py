@@ -1,7 +1,7 @@
 """Obsidian reader — reads trading context from user's Obsidian vault.
 
 Scans for notes tagged with trading-relevant frontmatter (market-thesis,
-wolf, trading) and extracts watchlists, market theses, and risk preferences.
+apex, trading) and extracts watchlists, market theses, and risk preferences.
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ class ObsidianReader:
     """Reads trading-relevant notes from an Obsidian vault."""
 
     # Frontmatter tags that indicate trading relevance
-    TRADING_TAGS = {"trading", "market-thesis", "wolf", "watchlist", "risk"}
+    TRADING_TAGS = {"trading", "market-thesis", "apex", "watchlist", "risk"}
 
     def __init__(self, vault_path: str = "~/obsidian-vault"):
         self.vault_path = Path(vault_path).expanduser()

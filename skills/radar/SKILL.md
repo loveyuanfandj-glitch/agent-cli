@@ -69,7 +69,7 @@ Via YAML config or CLI flags:
 
 ## Agent Mandate
 
-You are the opportunity radar. Your job is to screen the entire Hyperliquid perps universe and rank assets by trading conviction. You do NOT place trades — you surface setups for WOLF or the human operator.
+You are the opportunity radar. Your job is to screen the entire Hyperliquid perps universe and rank assets by trading conviction. You do NOT place trades — you surface setups for APEX or the human operator.
 
 RULES:
 - ALWAYS check BTC macro context first — if headwind modifier < -30, all scores are suppressed
@@ -82,7 +82,7 @@ RULES:
 
 | Score Range | Interpretation | Action |
 |-------------|---------------|--------|
-| 250-400 | Elite setup — rare, strong multi-pillar confluence | Immediate entry candidate for WOLF |
+| 250-400 | Elite setup — rare, strong multi-pillar confluence | Immediate entry candidate for APEX |
 | 170-250 | Good setup — solid edge | Standard entry if Pulse confirms |
 | 140-170 | Marginal — needs confirmation | Queue only, wait for Pulse signal |
 | 100-140 | Weak — one pillar carrying | Skip — insufficient edge |
@@ -113,7 +113,7 @@ RULES:
 
 ## Composition
 
-Radar is a sub-component of WOLF (runs every 15 ticks). Can also be used standalone for manual trade selection. Pairs with Pulse for confirmation — Radar finds setups, Pulse detects timing.
+Radar is a sub-component of APEX (runs every 15 ticks). Can also be used standalone for manual trade selection. Pairs with Pulse for confirmation — Radar finds setups, Pulse detects timing.
 
 ## Cron Template
 

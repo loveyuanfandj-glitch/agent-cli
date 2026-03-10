@@ -1,4 +1,4 @@
-"""WOLF state models — slot tracking, position lifecycle, persistence."""
+"""APEX state models — slot tracking, position lifecycle, persistence."""
 from __future__ import annotations
 
 import json
@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Optional
 
 
 @dataclass
-class WolfSlot:
-    """One position slot in the WOLF portfolio."""
+class ApexSlot:
+    """One position slot in the APEX portfolio."""
     slot_id: int = 0
     status: str = "empty"       # empty, active, closed
     instrument: str = ""
@@ -47,15 +47,15 @@ class WolfSlot:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "WolfSlot":
+    def from_dict(cls, d: Dict[str, Any]) -> "ApexSlot":
         valid = {k: v for k, v in d.items() if k in cls.__dataclass_fields__}
         return cls(**valid)
 
 
 @dataclass
-class WolfState:
-    """Full WOLF runtime state."""
-    slots: List[WolfSlot] = field(default_factory=list)
+class ApexState:
+    """Full APEX runtime state."""
+    slots: List[ApexSlot] = field(default_factory=list)
     tick_count: int = 0
     start_ts: int = 0
     daily_pnl: float = 0.0
@@ -64,13 +64,13 @@ class WolfState:
     total_pnl: float = 0.0
     entry_queue: List[Dict[str, Any]] = field(default_factory=list)
 
-    def get_empty_slot(self) -> Optional[WolfSlot]:
+    def get_empty_slot(self) -> Optional[ApexSlot]:
         for slot in self.slots:
             if slot.is_empty():
                 return slot
         return None
 
-    def active_slots(self) -> List[WolfSlot]:
+    def active_slots(self) -> List[ApexSlot]:
         return [s for s in self.slots if s.is_active()]
 
     def active_instruments(self) -> set:
@@ -92,7 +92,7 @@ class WolfState:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "WolfState":
+    def from_dict(cls, d: Dict[str, Any]) -> "ApexState":
         state = cls(
             tick_count=d.get("tick_count", 0),
             start_ts=d.get("start_ts", 0),
@@ -102,33 +102,33 @@ class WolfState:
             total_pnl=d.get("total_pnl", 0.0),
             entry_queue=d.get("entry_queue", []),
         )
-        state.slots = [WolfSlot.from_dict(s) for s in d.get("slots", [])]
+        state.slots = [ApexSlot.from_dict(s) for s in d.get("slots", [])]
         return state
 
     @classmethod
-    def new(cls, max_slots: int) -> "WolfState":
+    def new(cls, max_slots: int) -> "ApexState":
         return cls(
-            slots=[WolfSlot(slot_id=i) for i in range(max_slots)],
+            slots=[ApexSlot(slot_id=i) for i in range(max_slots)],
             start_ts=int(time.time() * 1000),
         )
 
 
-class WolfStateStore:
-    """JSON persistence for WOLF state."""
+class ApexStateStore:
+    """JSON persistence for APEX state."""
 
-    def __init__(self, path: str = "data/wolf/state.json"):
+    def __init__(self, path: str = "data/apex/state.json"):
         self.path = path
 
-    def save(self, state: WolfState) -> None:
+    def save(self, state: ApexState) -> None:
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
         with open(self.path, "w") as f:
             json.dump(state.to_dict(), f, indent=2)
 
-    def load(self) -> Optional[WolfState]:
+    def load(self) -> Optional[ApexState]:
         if not os.path.exists(self.path):
             return None
         try:
             with open(self.path) as f:
-                return WolfState.from_dict(json.load(f))
+                return ApexState.from_dict(json.load(f))
         except (json.JSONDecodeError, IOError):
             return None

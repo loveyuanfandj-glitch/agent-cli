@@ -1,7 +1,7 @@
 """MCP server for agent-cli — exposes trading tools via Model Context Protocol.
 
 Fast tools (account, strategies, builder, wallet, setup) call Python directly.
-Long-running tools (run_strategy, wolf_run, radar, reflect) use subprocess.
+Long-running tools (run_strategy, apex_run, radar, reflect) use subprocess.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def create_mcp_server():
     """Create and configure the FastMCP server."""
     from mcp.server.fastmcp import FastMCP
 
-    mcp = FastMCP("yex-trader", instructions="Autonomous Hyperliquid trading CLI — 14 strategies, WOLF orchestrator, REFLECT reviews.")
+    mcp = FastMCP("yex-trader", instructions="Autonomous Hyperliquid trading CLI — 14 strategies, APEX orchestrator, REFLECT reviews.")
 
     # ------------------------------------------------------------------
     # Fast tools — call Python directly (no subprocess overhead)
@@ -219,18 +219,18 @@ def create_mcp_server():
         return _run_hl(*args, timeout=60)
 
     @mcp.tool()
-    def wolf_status() -> str:
-        """Get WOLF orchestrator status (slots, positions, daily PnL)."""
-        return _run_hl("wolf", "status")
+    def apex_status() -> str:
+        """Get APEX orchestrator status (slots, positions, daily PnL)."""
+        return _run_hl("apex", "status")
 
     @mcp.tool()
-    def wolf_run(
+    def apex_run(
         mock: bool = False,
         max_ticks: Optional[int] = None,
         preset: str = "default",
         mainnet: bool = False,
     ) -> str:
-        """Start WOLF multi-slot orchestrator.
+        """Start APEX multi-slot orchestrator.
 
         Args:
             mock: Use mock data
@@ -238,7 +238,7 @@ def create_mcp_server():
             preset: Strategy preset (default, conservative, aggressive)
             mainnet: Use mainnet
         """
-        args = ["wolf", "run", "--preset", preset]
+        args = ["apex", "run", "--preset", preset]
         if mock:
             args.append("--mock")
         if max_ticks is not None:
@@ -304,7 +304,7 @@ def create_mcp_server():
         guard = JudgeGuard()
         report = guard.read_latest_report()
         if not report:
-            return json.dumps({"status": "no_reports", "message": "No judge reports yet. Run WOLF to generate."})
+            return json.dumps({"status": "no_reports", "message": "No judge reports yet. Run APEX to generate."})
         return json.dumps(report.to_dict(), indent=2)
 
     @mcp.tool()

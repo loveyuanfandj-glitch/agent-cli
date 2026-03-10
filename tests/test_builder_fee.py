@@ -172,21 +172,21 @@ class TestOrderManagerBuilder:
 
 
 # ---------------------------------------------------------------------------
-# WolfRunner accepts builder
+# ApexRunner accepts builder
 # ---------------------------------------------------------------------------
 
-class TestWolfRunnerBuilder:
-    def test_wolf_runner_stores_builder(self):
-        from skills.wolf.scripts.standalone_runner import WolfRunner
+class TestApexRunnerBuilder:
+    def test_apex_runner_stores_builder(self):
+        from skills.apex.scripts.standalone_runner import ApexRunner
 
         mock_hl = MagicMock()
-        builder_info = {"b": "0xWOLF", "f": 10}
-        runner = WolfRunner(hl=mock_hl, builder=builder_info)
+        builder_info = {"b": "0xAPEX", "f": 10}
+        runner = ApexRunner(hl=mock_hl, builder=builder_info)
         assert runner.builder == builder_info
 
-    def test_wolf_runner_builder_default_none(self):
-        from skills.wolf.scripts.standalone_runner import WolfRunner
+    def test_apex_runner_builder_default_none(self):
+        from skills.apex.scripts.standalone_runner import ApexRunner
 
         mock_hl = MagicMock()
-        runner = WolfRunner(hl=mock_hl)
+        runner = ApexRunner(hl=mock_hl)
         assert runner.builder is None

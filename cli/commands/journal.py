@@ -14,7 +14,7 @@ journal_app = typer.Typer(no_args_is_help=True)
 def journal_view(
     date: Optional[str] = typer.Option(None, "--date", "-d", help="Filter by date (YYYY-MM-DD)"),
     limit: int = typer.Option(20, "--limit", "-n"),
-    data_dir: str = typer.Option("data/wolf", "--data-dir"),
+    data_dir: str = typer.Option("data/apex", "--data-dir"),
 ):
     """View trade journal entries with reasoning."""
     project_root = str(Path(__file__).resolve().parent.parent.parent)
@@ -43,7 +43,7 @@ def journal_view(
 @journal_app.command("entry")
 def journal_entry(
     entry_id: str = typer.Argument(..., help="Journal entry ID"),
-    data_dir: str = typer.Option("data/wolf", "--data-dir"),
+    data_dir: str = typer.Option("data/apex", "--data-dir"),
 ):
     """Show full detail of a journal entry including reasoning."""
     project_root = str(Path(__file__).resolve().parent.parent.parent)

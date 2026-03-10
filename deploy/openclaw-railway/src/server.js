@@ -63,7 +63,7 @@ app.use("/api", (req, res, next) => {
 app.get("/status", async (req, res) => {
   const { execSync } = require("child_process");
   try {
-    const output = execSync("python3 -m cli.main wolf status", {
+    const output = execSync("python3 -m cli.main apex status", {
       timeout: 10000,
       encoding: "utf-8",
       cwd: "/agent-cli",
@@ -160,7 +160,7 @@ app.post("/api/resume", (req, res) => {
 
 // API: Configure agent (write config override)
 app.post("/api/configure", express.json(), (req, res) => {
-  const configPath = path.join(DATA_DIR, "wolf", "config-override.json");
+  const configPath = path.join(DATA_DIR, "apex", "config-override.json");
   try {
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify(req.body, null, 2));

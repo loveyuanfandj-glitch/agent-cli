@@ -1,6 +1,6 @@
 """Agent memory engine — pure computation, zero I/O.
 
-Persistent memory system for WOLF. Tracks parameter changes, session events,
+Persistent memory system for APEX. Tracks parameter changes, session events,
 REFLECT reviews, notable trades, and judge findings. Maintains a playbook of
 accumulated knowledge about what works per instrument and signal source.
 """
@@ -240,7 +240,7 @@ class MemoryEngine:
         closed_slots: list,
         now_ms: int = 0,
     ) -> Playbook:
-        """Update playbook from closed WolfSlot-like dicts.
+        """Update playbook from closed ApexSlot-like dicts.
 
         Each slot dict should have: instrument, entry_source, close_pnl,
         current_roe (at close), entry_ts, close_ts.

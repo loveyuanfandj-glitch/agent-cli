@@ -16,15 +16,15 @@ function readStatus() {
     );
     return JSON.parse(output.trim());
   } catch (err) {
-    // Fallback: try reading wolf state.json directly
-    const wolfState = path.join(DATA_DIR, "wolf", "state.json");
-    if (fs.existsSync(wolfState)) {
+    // Fallback: try reading apex state.json directly
+    const apexState = path.join(DATA_DIR, "apex", "state.json");
+    if (fs.existsSync(apexState)) {
       try {
-        const state = JSON.parse(fs.readFileSync(wolfState, "utf-8"));
+        const state = JSON.parse(fs.readFileSync(apexState, "utf-8"));
         const active = (state.slots || []).filter((s) => s.status === "active");
         return {
           status: "running",
-          engine: "wolf",
+          engine: "apex",
           tick_count: state.tick_count || 0,
           daily_pnl: state.daily_pnl || 0,
           total_pnl: state.total_pnl || 0,

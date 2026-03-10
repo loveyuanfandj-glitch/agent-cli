@@ -1,24 +1,24 @@
 ---
-name: wolf-strategy
+name: apex-strategy
 version: 1.0.0
 description: Autonomous multi-slot trading orchestrator
 author: YEX
 dependencies:
-  - modules/wolf_config.py
-  - modules/wolf_state.py
-  - modules/wolf_engine.py
+  - modules/apex_config.py
+  - modules/apex_state.py
+  - modules/apex_engine.py
   - modules/radar_guard.py
   - modules/pulse_guard.py
-  - modules/dsl_guard.py
+  - modules/guard_bridge.py
 ---
 
-# WOLF Strategy
+# APEX Strategy
 
 Autonomous multi-slot trading strategy that composes Radar + Pulse + DSL into a unified orchestrator.
 
 ## Architecture
 
-WOLF runs a single tick loop (60s base) that:
+APEX runs a single tick loop (60s base) that:
 
 1. **Every tick**: Fetch prices, update ROEs, check DSL guards, run pulse, evaluate entry/exit
 2. **Every 5 ticks** (5 min): Watchdog health check (verify positions match exchange)
@@ -54,19 +54,19 @@ WOLF runs a single tick loop (60s base) that:
 
 ```bash
 # Mock mode
-hl wolf run --mock --max-ticks 10
+hl apex run --mock --max-ticks 10
 
 # Live (testnet)
-hl wolf run
+hl apex run
 
 # Live (mainnet)
-hl wolf run --mainnet
+hl apex run --mainnet
 
 # Check status
-hl wolf status
+hl apex status
 
 # List presets
-hl wolf presets
+hl apex presets
 ```
 
 ## Presets
@@ -77,7 +77,7 @@ hl wolf presets
 
 ## Agent Mandate
 
-You are the WOLF orchestrator. Your job is to hunt for high-probability setups and manage 2-3 concurrent positions with strict risk controls.
+You are the APEX orchestrator. Your job is to hunt for high-probability setups and manage 2-3 concurrent positions with strict risk controls.
 
 RULES:
 - NEVER exceed `max_slots` concurrent positions
@@ -115,22 +115,22 @@ RULES:
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `No positions but slots show ACTIVE` | Stale state after restart | `hl wolf status`, manually reset via state file |
-| `Radar returned 0 candidates` | Low-vol period or API issue | Normal during weekends/low-vol — WOLF will idle safely |
-| `Daily loss limit reached` | Bad session | WOLF auto-closes all. Review with `hl reflect run` tomorrow |
-| `Builder fee not approved` | Skipped onboarding step | `hl builder approve` then restart WOLF |
-| `Connection timeout` | HL API rate limit | WOLF auto-retries with backoff — no action needed |
+| `No positions but slots show ACTIVE` | Stale state after restart | `hl apex status`, manually reset via state file |
+| `Radar returned 0 candidates` | Low-vol period or API issue | Normal during weekends/low-vol — APEX will idle safely |
+| `Daily loss limit reached` | Bad session | APEX auto-closes all. Review with `hl reflect run` tomorrow |
+| `Builder fee not approved` | Skipped onboarding step | `hl builder approve` then restart APEX |
+| `Connection timeout` | HL API rate limit | APEX auto-retries with backoff — no action needed |
 
 ## Composition
 
-WOLF is the top-level orchestrator. It composes Radar (opportunity finding), Pulse (real-time signal detection), and DSL (risk management) into one tick loop. Use WOLF for autonomous trading. Use individual skills when you need manual control.
+APEX is the top-level orchestrator. It composes Radar (opportunity finding), Pulse (real-time signal detection), and DSL (risk management) into one tick loop. Use APEX for autonomous trading. Use individual skills when you need manual control.
 
 ## Cron Template
 
 ```bash
-# Start WOLF at market open, stop at EOD
-0 8 * * 1-5  cd ~/agent-cli && source .venv/bin/activate && hl wolf run --budget 5000 >> logs/wolf.log 2>&1
-0 20 * * 1-5 pkill -f "hl wolf run"
+# Start APEX at market open, stop at EOD
+0 8 * * 1-5  cd ~/agent-cli && source .venv/bin/activate && hl apex run --budget 5000 >> logs/apex.log 2>&1
+0 20 * * 1-5 pkill -f "hl apex run"
 # Nightly REFLECT review
 55 23 * * * cd ~/agent-cli && source .venv/bin/activate && hl reflect run >> logs/reflect.log 2>&1
 ```
