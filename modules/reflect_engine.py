@@ -158,7 +158,7 @@ class ReflectEngine:
     def compute(
         self,
         trades: List[TradeRecord],
-        wolf_state: Optional[Dict] = None,
+        apex_state: Optional[Dict] = None,
     ) -> ReflectMetrics:
         m = ReflectMetrics()
         m.total_trades = len(trades)

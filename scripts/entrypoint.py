@@ -116,8 +116,8 @@ class HealthHandler(BaseHTTPRequestHandler):
         elif self.path == "/api/scanner":
             data_dir = os.environ.get("DATA_DIR", "/data")
             try:
-                from cli.api.status_reader import read_scanner
-                body = json.dumps(read_scanner(data_dir))
+                from cli.api.status_reader import read_radar
+                body = json.dumps(read_radar(data_dir))
             except Exception as e:
                 body = json.dumps({"error": str(e)})
             self._cors_headers()

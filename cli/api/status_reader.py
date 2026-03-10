@@ -22,9 +22,9 @@ def read_status(data_dir: str = "data") -> Dict[str, Any]:
     result: Dict[str, Any] = {"status": "stopped"}
 
     # Try APEX state first (higher priority — APEX wraps strategies)
-    wolf_state = _read_apex_state(f"{data_dir}/apex")
-    if wolf_state:
-        result.update(wolf_state)
+    apex_state = _read_apex_state(f"{data_dir}/apex")
+    if apex_state:
+        result.update(apex_state)
         result["status"] = "running"
         return result
 
@@ -38,9 +38,9 @@ def read_status(data_dir: str = "data") -> Dict[str, Any]:
     return result
 
 
-def _read_apex_state(wolf_dir: str) -> Dict[str, Any] | None:
+def _read_apex_state(apex_dir: str) -> Dict[str, Any] | None:
     """Read APEX orchestrator state from state.json."""
-    state_path = Path(wolf_dir) / "state.json"
+    state_path = Path(apex_dir) / "state.json"
     if not state_path.exists():
         return None
 
@@ -53,9 +53,9 @@ def _read_apex_state(wolf_dir: str) -> Dict[str, Any] | None:
     active_slots = [s for s in state.get("slots", []) if s.get("status") == "active"]
     closed_slots = [s for s in state.get("slots", []) if s.get("status") == "closed"]
 
-    metrics = _read_trade_metrics(wolf_dir)
-    account = _read_account(wolf_dir)
-    override = _read_config_override(wolf_dir)
+    metrics = _read_trade_metrics(apex_dir)
+    account = _read_account(apex_dir)
+    override = _read_config_override(apex_dir)
 
     return {
         "engine": "apex",
@@ -93,9 +93,9 @@ def _read_apex_state(wolf_dir: str) -> Dict[str, Any] | None:
     }
 
 
-def _read_trade_metrics(wolf_dir: str) -> Dict[str, Any]:
+def _read_trade_metrics(apex_dir: str) -> Dict[str, Any]:
     """Compute trade metrics from trades.jsonl."""
-    trades_path = Path(wolf_dir) / "trades.jsonl"
+    trades_path = Path(apex_dir) / "trades.jsonl"
     if not trades_path.exists():
         return {}
 
@@ -163,9 +163,9 @@ def _read_trade_metrics(wolf_dir: str) -> Dict[str, Any]:
         return {}
 
 
-def _read_account(wolf_dir: str) -> Dict[str, Any] | None:
+def _read_account(apex_dir: str) -> Dict[str, Any] | None:
     """Read account.json if it exists."""
-    account_path = Path(wolf_dir) / "account.json"
+    account_path = Path(apex_dir) / "account.json"
     if not account_path.exists():
         return None
     try:
@@ -175,9 +175,9 @@ def _read_account(wolf_dir: str) -> Dict[str, Any] | None:
         return None
 
 
-def _read_config_override(wolf_dir: str) -> Dict[str, Any]:
+def _read_config_override(apex_dir: str) -> Dict[str, Any]:
     """Read config-override.json if it exists."""
-    override_path = Path(wolf_dir) / "config-override.json"
+    override_path = Path(apex_dir) / "config-override.json"
     if not override_path.exists():
         return {}
     try:
@@ -300,7 +300,7 @@ def read_reflect(data_dir: str) -> Dict[str, Any]:
         return {"report": None, "report_name": None, "reports": []}
 
 
-def read_scanner(data_dir: str) -> Dict[str, Any]:
+def read_radar(data_dir: str) -> Dict[str, Any]:
     """Read radar history."""
     primary = Path(data_dir) / "apex" / "radar-history.json"
     fallback = Path(data_dir) / "radar" / "scan-history.json"
@@ -356,7 +356,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "command",
-        choices=["status", "strategies", "trades", "reflect", "scanner", "journal"],
+        choices=["status", "strategies", "trades", "reflect", "radar", "journal"],
         default="status",
         nargs="?",
     )
@@ -370,8 +370,8 @@ if __name__ == "__main__":
         print(json.dumps(read_trades(args.data_dir, limit=args.limit), indent=2))
     elif args.command == "reflect":
         print(json.dumps(read_reflect(args.data_dir), indent=2))
-    elif args.command == "scanner":
-        print(json.dumps(read_scanner(args.data_dir), indent=2))
+    elif args.command == "radar":
+        print(json.dumps(read_radar(args.data_dir), indent=2))
     elif args.command == "journal":
         print(json.dumps(read_journal(args.data_dir, limit=args.limit), indent=2))
     else:

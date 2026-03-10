@@ -267,9 +267,9 @@ class ApexRunner:
                 log.warning("Smart money scan failed: %s", e)
 
         # 4. Run radar (every N ticks)
-        scanner_opps = []
+        radar_opps = []
         if tick % self.config.radar_interval_ticks == 0:
-            scanner_opps = self._run_scanner()
+            radar_opps = self._run_radar()
 
         # 5. Watchdog (every N ticks)
         if tick % self.config.watchdog_interval_ticks == 0:
@@ -287,7 +287,7 @@ class ApexRunner:
         actions = self.engine.evaluate(
             state=self.state,
             pulse_signals=pulse_signals,
-            scanner_opps=scanner_opps,
+            radar_opps=radar_opps,
             slot_prices=slot_prices,
             slot_guard_results=slot_guard_results,
             now_ms=now_ms,
@@ -396,7 +396,7 @@ class ApexRunner:
             log.warning("Pulse scan failed: %s", e)
             return []
 
-    def _run_scanner(self) -> List[Dict[str, Any]]:
+    def _run_radar(self) -> List[Dict[str, Any]]:
         """Run radar and return opportunity dicts for the engine."""
         try:
             all_markets = self.hl.get_all_markets()

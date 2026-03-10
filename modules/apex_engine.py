@@ -36,9 +36,9 @@ class ApexEngine:
         self,
         state: ApexState,
         pulse_signals: List[Dict[str, Any]],
-        scanner_opps: List[Dict[str, Any]],
+        radar_opps: List[Dict[str, Any]],
         slot_prices: Dict[int, float],
-        slot_dsl_results: Dict[int, Dict[str, Any]],
+        slot_guard_results: Dict[int, Dict[str, Any]],
         now_ms: int = 0,
         smart_money_signals: Optional[List[Dict[str, Any]]] = None,
     ) -> List[ApexAction]:
@@ -65,9 +65,9 @@ class ApexEngine:
         # 2. Exit checks for each active slot
         for slot in state.active_slots():
             exit_action = self._check_exit(
-                slot, pulse_signals, scanner_opps,
+                slot, pulse_signals, radar_opps,
                 slot_prices.get(slot.slot_id, 0),
-                slot_dsl_results.get(slot.slot_id, {}),
+                slot_guard_results.get(slot.slot_id, {}),
                 now_ms,
             )
             if exit_action:
@@ -75,7 +75,7 @@ class ApexEngine:
 
         # 3. Entry evaluation
         entry_actions = self._evaluate_entries(
-            state, pulse_signals, scanner_opps, now_ms,
+            state, pulse_signals, radar_opps, now_ms,
             smart_money_signals=smart_money_signals or [],
         )
         actions.extend(entry_actions)
@@ -86,9 +86,9 @@ class ApexEngine:
         self,
         slot: ApexSlot,
         pulse_signals: List[Dict],
-        scanner_opps: List[Dict],
+        radar_opps: List[Dict],
         current_price: float,
-        dsl_result: Dict,
+        guard_result: Dict,
         now_ms: int,
     ) -> Optional[ApexAction]:
         """Check exit conditions for one active slot."""
@@ -107,11 +107,11 @@ class ApexEngine:
                 slot.last_progress_ts = now_ms
 
         # 1. DSL close
-        if dsl_result.get("action") == "close":
+        if guard_result.get("action") == "close":
             return ApexAction(
                 action="exit", slot_id=slot.slot_id,
                 instrument=slot.instrument, direction=slot.direction,
-                reason=f"guard_close: {dsl_result.get('reason', '')}",
+                reason=f"guard_close: {guard_result.get('reason', '')}",
             )
 
         # 2. Hard stop
@@ -127,12 +127,12 @@ class ApexEngine:
         still_in_signals = any(
             s.get("asset") == coin for s in pulse_signals
         )
-        still_in_scanner = any(
+        still_in_radar = any(
             o.get("asset") == coin and o.get("direction", "").lower() == slot.direction
-            for o in scanner_opps
+            for o in radar_opps
         )
 
-        if still_in_signals or still_in_scanner:
+        if still_in_signals or still_in_radar:
             slot.last_signal_seen_ts = now_ms
             slot.signal_disappeared_ts = 0
         else:
@@ -164,7 +164,7 @@ class ApexEngine:
         self,
         state: ApexState,
         pulse_signals: List[Dict],
-        scanner_opps: List[Dict],
+        radar_opps: List[Dict],
         now_ms: int,
         smart_money_signals: Optional[List[Dict[str, Any]]] = None,
     ) -> List[ApexAction]:
@@ -203,7 +203,7 @@ class ApexEngine:
                     })
 
         # Priority 2: Radar high scores
-        for opp in scanner_opps:
+        for opp in radar_opps:
             if opp.get("final_score", 0) >= cfg.radar_score_threshold:
                 instrument = opp["asset"] + "-PERP"
                 if instrument not in active_instruments and instrument not in cfg.excluded_instruments:

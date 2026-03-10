@@ -77,9 +77,9 @@ class TestExitLogic:
 
     def test_guard_close(self):
         state = _make_state(slots=[_active_slot(0, "ETH-PERP")])
-        dsl_results = {0: {"action": "close", "reason": "tier_breach"}}
+        guard_results = {0: {"action": "close", "reason": "tier_breach"}}
 
-        actions = self.engine.evaluate(state, [], [], {}, dsl_results)
+        actions = self.engine.evaluate(state, [], [], {}, guard_results)
         exits = [a for a in actions if a.action == "exit"]
         assert len(exits) == 1
         assert "guard_close" in exits[0].reason
