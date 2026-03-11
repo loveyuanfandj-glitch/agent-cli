@@ -1,6 +1,7 @@
 """APEX strategy configuration — budget, slots, risk, and presets."""
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -108,6 +109,18 @@ class ApexConfig:
 
     def to_dict(self) -> Dict[str, Any]:
         return {k: getattr(self, k) for k in self.__dataclass_fields__}
+
+    def to_json(self, path: str) -> None:
+        """Serialize config to a JSON file."""
+        with open(path, "w") as f:
+            json.dump(self.to_dict(), f, indent=2)
+
+    @classmethod
+    def from_json(cls, path: str) -> "ApexConfig":
+        """Deserialize config from a JSON file."""
+        with open(path) as f:
+            data = json.load(f)
+        return cls.from_dict(data)
 
 
 APEX_PRESETS: Dict[str, ApexConfig] = {

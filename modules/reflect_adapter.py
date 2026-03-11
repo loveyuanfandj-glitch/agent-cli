@@ -151,6 +151,56 @@ def _clamp_adjust(config, param: str, new_value, reason: str):
     return Adjustment(param=param, old_value=old_value, new_value=new_value, reason=reason)
 
 
+def suggest_research_directions(metrics: ReflectMetrics) -> List[str]:
+    """Convert REFLECT findings into autoresearch exploration hints.
+
+    Returns a list of human-readable search directions that the autoresearch
+    skill can use to sweep config parameters.
+    """
+    directions: List[str] = []
+
+    if metrics.total_round_trips < 3:
+        return ["Collect more trades before running autoresearch"]
+
+    # High FDR → tighten radar threshold to filter low-quality entries
+    if metrics.fdr > 30:
+        directions.append("Try raising radar_score_threshold in [170, 250]")
+    elif metrics.fdr > 20:
+        directions.append("Try raising radar_score_threshold in [150, 220]")
+
+    # Low win rate → raise pulse confidence bar
+    if metrics.win_rate < 40 and metrics.total_round_trips >= 5:
+        directions.append("Sweep pulse_confidence_threshold in [70, 95]")
+
+    # Direction imbalance
+    if metrics.long_pnl < 0 and metrics.short_pnl > 0 and metrics.long_count >= 3:
+        directions.append("Set max_same_direction to 1")
+    elif metrics.short_pnl < 0 and metrics.long_pnl > 0 and metrics.short_count >= 3:
+        directions.append("Set max_same_direction to 1")
+
+    # Loss streaks → tighten daily loss limit
+    if metrics.max_consecutive_losses >= 5:
+        directions.append("Reduce daily_loss_limit by 20% from current value")
+
+    # Monster dependency → diversify
+    if metrics.monster_dependency_pct > 60 and metrics.total_round_trips >= 5:
+        directions.append("Raise radar_score_threshold to reduce reliance on outlier trades")
+
+    # Fees exceed gross PnL → emergency
+    if metrics.total_fees > abs(metrics.gross_pnl) and metrics.total_round_trips >= 3:
+        directions.append("CRITICAL: Raise radar_score_threshold to [220, 280] and pulse_confidence_threshold to [85, 95]")
+
+    # Healthy — try relaxing
+    if (not directions
+            and metrics.win_rate >= 50
+            and metrics.net_pnl > 0
+            and metrics.fdr < 15
+            and metrics.total_round_trips >= 5):
+        directions.append("Strategy is healthy — try lowering radar_score_threshold in [140, 170] to capture more trades")
+
+    return directions
+
+
 def _emergency_tighten(config) -> List[Adjustment]:
     """Emergency mode: tighten everything to stop bleeding."""
     adjs = []
