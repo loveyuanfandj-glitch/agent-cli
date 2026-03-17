@@ -11,6 +11,19 @@ from daytrade.tradfi_strategies.stock_gap_fill import GapFillStrategy
 from daytrade.tradfi_strategies.stock_vwap_scalp import VWAPScalpStrategy
 from daytrade.tradfi_strategies.etf_orb import ETFOpeningRangeStrategy
 from daytrade.tradfi_strategies.etf_mean_reversion import ETFMeanReversionStrategy
+from daytrade.tradfi_strategies.hk_overnight_follow import HKOvernightFollowStrategy
+from daytrade.tradfi_strategies.hk_ah_premium import AHPremiumStrategy
+
+
+HK_STRATEGIES: Dict[str, Type[DaytradeStrategy]] = {
+    "hk_overnight_follow": HKOvernightFollowStrategy,
+    "hk_ah_premium": AHPremiumStrategy,
+}
+
+HK_DESCRIPTIONS: Dict[str, str] = {
+    "hk_overnight_follow": "美股隔夜跟随 — 美股大涨/跌后港股开盘跟随入场 (持有当天)",
+    "hk_ah_premium": "AH 溢价收敛 — H 股极度折价时买入等待收敛 (持有数周~数月)",
+}
 
 
 COMMODITY_STRATEGIES: Dict[str, Type[DaytradeStrategy]] = {

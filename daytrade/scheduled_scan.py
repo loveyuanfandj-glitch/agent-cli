@@ -50,7 +50,10 @@ CRYPTO_SYMBOLS = [
 
 def _get_strategies(market: str):
     """Return strategy dict based on market."""
-    if market == "hk" or market == "us":
+    if market == "hk":
+        from daytrade.tradfi_strategies import COMMODITY_STRATEGIES, STOCK_STRATEGIES, ETF_STRATEGIES, HK_STRATEGIES
+        return {**HK_STRATEGIES, **COMMODITY_STRATEGIES, **STOCK_STRATEGIES, **ETF_STRATEGIES}
+    if market == "us":
         from daytrade.tradfi_strategies import COMMODITY_STRATEGIES, STOCK_STRATEGIES, ETF_STRATEGIES
         return {**COMMODITY_STRATEGIES, **STOCK_STRATEGIES, **ETF_STRATEGIES}
     else:

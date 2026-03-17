@@ -20,6 +20,7 @@ from daytrade.providers.yahoo import YahooFinanceProvider
 from daytrade.tradfi_strategies import (
     COMMODITY_STRATEGIES, STOCK_STRATEGIES, ETF_STRATEGIES,
     COMMODITY_DESCRIPTIONS, STOCK_DESCRIPTIONS, ETF_DESCRIPTIONS,
+    HK_STRATEGIES, HK_DESCRIPTIONS,
 )
 
 _yf = YahooFinanceProvider()
@@ -70,8 +71,8 @@ HK_STOCKS = [
 ALL_HK = HK_INDEX_ETFS + HK_SECTOR_ETFS + HK_STOCKS
 
 # Merge all strategies for HK
-ALL_STRATEGIES = {**ETF_STRATEGIES, **STOCK_STRATEGIES, **COMMODITY_STRATEGIES}
-ALL_DESCRIPTIONS = {**ETF_DESCRIPTIONS, **STOCK_DESCRIPTIONS, **COMMODITY_DESCRIPTIONS}
+ALL_STRATEGIES = {**HK_STRATEGIES, **ETF_STRATEGIES, **STOCK_STRATEGIES, **COMMODITY_STRATEGIES}
+ALL_DESCRIPTIONS = {**HK_DESCRIPTIONS, **ETF_DESCRIPTIONS, **STOCK_DESCRIPTIONS, **COMMODITY_DESCRIPTIONS}
 
 
 # ---------------------------------------------------------------------------
@@ -374,9 +375,11 @@ with tab_etf:
                                format_func=lambda s: f"{s} — {next((i['name'] for i in filtered if i['symbol']==s), s)}",
                                key="hk_etf_sym")
 
-        hk_strat = st.selectbox("策略", list(ETF_STRATEGIES.keys()),
-                                 format_func=lambda k: f"{k} — {ETF_DESCRIPTIONS[k]}", key="hk_etf_strat")
-        scls = ETF_STRATEGIES[hk_strat]
+        _etf_hk_strats = {**HK_STRATEGIES, **ETF_STRATEGIES}
+        _etf_hk_descs = {**HK_DESCRIPTIONS, **ETF_DESCRIPTIONS}
+        hk_strat = st.selectbox("策略", list(_etf_hk_strats.keys()),
+                                 format_func=lambda k: f"{k} — {_etf_hk_descs[k]}", key="hk_etf_strat")
+        scls = _etf_hk_strats[hk_strat]
 
         with st.expander("策略参数"):
             p = {}
@@ -407,7 +410,7 @@ with tab_etf:
                                    format_func=lambda s: f"{s} {next((i['name'] for i in all_etfs if i['symbol']==s), '')}",
                                    default=["2800.HK", "3067.HK", "2828.HK"], key="hk_etf_scan")
         if st.button("🔍 扫描", type="primary", key="hk_etf_scan_btn") and etf_syms:
-            r = _run_scan(etf_syms, ETF_STRATEGIES, ETF_DESCRIPTIONS, interval, lookback)
+            r = _run_scan(etf_syms, {**HK_STRATEGIES, **ETF_STRATEGIES}, {**HK_DESCRIPTIONS, **ETF_DESCRIPTIONS}, interval, lookback)
             _display_scan(r)
 
 # ===================== STOCKS =====================
@@ -424,9 +427,11 @@ with tab_stock:
         stk_custom = st.text_input("或输入港股代码", "", key="hk_custom", placeholder="例: 1398.HK, 0388.HK")
         use_sym = stk_custom.strip() if stk_custom.strip() else stk_sym
 
-        stk_strat = st.selectbox("策略", list(STOCK_STRATEGIES.keys()),
-                                  format_func=lambda k: f"{k} — {STOCK_DESCRIPTIONS[k]}", key="hk_stk_strat")
-        scls = STOCK_STRATEGIES[stk_strat]
+        _stk_hk_strats = {**HK_STRATEGIES, **STOCK_STRATEGIES}
+        _stk_hk_descs = {**HK_DESCRIPTIONS, **STOCK_DESCRIPTIONS}
+        stk_strat = st.selectbox("策略", list(_stk_hk_strats.keys()),
+                                  format_func=lambda k: f"{k} — {_stk_hk_descs[k]}", key="hk_stk_strat")
+        scls = _stk_hk_strats[stk_strat]
 
         with st.expander("策略参数"):
             p = {}
@@ -457,7 +462,7 @@ with tab_stock:
                                    format_func=lambda s: f"{s} {next((i['name'] for i in HK_STOCKS if i['symbol']==s), '')}",
                                    default=["0700.HK", "9988.HK", "1810.HK", "1211.HK"], key="hk_stk_scan")
         if st.button("🔍 扫描", type="primary", key="hk_stk_scan_btn") and stk_syms:
-            r = _run_scan(stk_syms, STOCK_STRATEGIES, STOCK_DESCRIPTIONS, interval, lookback)
+            r = _run_scan(stk_syms, {**HK_STRATEGIES, **STOCK_STRATEGIES}, {**HK_DESCRIPTIONS, **STOCK_DESCRIPTIONS}, interval, lookback)
             _display_scan(r)
 
 # ===================== FULL MARKET SCAN =====================
