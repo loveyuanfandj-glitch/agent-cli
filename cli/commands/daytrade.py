@@ -82,13 +82,15 @@ def autoscan_cmd(
     lookback: int = typer.Option(365, help="Lookback days"),
     webhook: str = typer.Option("", help="Feishu webhook URL (uses default if empty)"),
     max_runs: int = typer.Option(0, help="Max scan runs (0 = unlimited)"),
+    trading_hours: bool = typer.Option(False, "--trading-hours", help="Only scan during market open hours"),
 ):
     """Auto-scan on schedule and push signals to Feishu.
 
     Examples:
         hl daytrade autoscan --market hk --every 30
-        hl daytrade autoscan --market us --every 60
-        hl daytrade autoscan --market hk --every 15 --max-runs 1
+        hl daytrade autoscan --market hk --every 30 --trading-hours
+        hl daytrade autoscan --market us --every 60 --trading-hours
+        hl daytrade autoscan --market hk --max-runs 1
     """
     from daytrade.scheduled_scan import run_scheduled
     from daytrade.notify_feishu import FEISHU_WEBHOOK_URL
@@ -101,6 +103,7 @@ def autoscan_cmd(
         lookback_days=lookback,
         webhook_url=url,
         max_runs=max_runs,
+        trading_hours_only=trading_hours,
     )
 
 

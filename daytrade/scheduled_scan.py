@@ -169,6 +169,87 @@ def run_single_scan(
     }
 
 
+# ---------------------------------------------------------------------------
+# Trading hours (UTC)
+# ---------------------------------------------------------------------------
+MARKET_HOURS = {
+    "hk": {
+        # HK: 09:30-16:00 HKT = 01:30-08:00 UTC
+        "sessions": [(1, 30, 4, 0), (5, 0, 8, 0)],  # morning + afternoon
+        "tz_name": "HKT (UTC+8)",
+        "local_hours": "09:30-12:00, 13:00-16:00",
+    },
+    "us": {
+        # US: 09:30-16:00 ET = 14:30-21:00 UTC (winter), 13:30-20:00 UTC (summer)
+        "sessions": [(13, 30, 21, 0)],  # covers both DST variants
+        "tz_name": "ET (UTC-4/-5)",
+        "local_hours": "09:30-16:00",
+    },
+    "crypto": {
+        # 24/7
+        "sessions": [(0, 0, 23, 59)],
+        "tz_name": "UTC (24/7)",
+        "local_hours": "全天",
+    },
+}
+
+
+def _is_market_open(market: str) -> bool:
+    """Check if market is currently in trading hours (UTC)."""
+    if market == "crypto":
+        return True
+
+    now = datetime.datetime.utcnow()
+    hours = MARKET_HOURS.get(market, {}).get("sessions", [])
+
+    for start_h, start_m, end_h, end_m in hours:
+        start = now.replace(hour=start_h, minute=start_m, second=0, microsecond=0)
+        end = now.replace(hour=end_h, minute=end_m, second=0, microsecond=0)
+        if start <= now <= end:
+            return True
+
+    return False
+
+
+def _next_open_time(market: str) -> str:
+    """Return next market open time as a human-readable string."""
+    now = datetime.datetime.utcnow()
+    hours = MARKET_HOURS.get(market, {}).get("sessions", [])
+    local_hours = MARKET_HOURS.get(market, {}).get("local_hours", "")
+    tz_name = MARKET_HOURS.get(market, {}).get("tz_name", "")
+
+    for start_h, start_m, _, _ in hours:
+        open_time = now.replace(hour=start_h, minute=start_m, second=0, microsecond=0)
+        if now < open_time:
+            delta = open_time - now
+            mins = int(delta.total_seconds() / 60)
+            return f"{mins} 分钟后开盘 ({local_hours} {tz_name})"
+
+    # Next day
+    tomorrow_first = hours[0] if hours else (0, 0, 0, 0)
+    open_time = (now + datetime.timedelta(days=1)).replace(
+        hour=tomorrow_first[0], minute=tomorrow_first[1], second=0, microsecond=0,
+    )
+    # Skip weekends for HK and US
+    if market in ("hk", "us"):
+        while open_time.weekday() >= 5:  # Saturday=5, Sunday=6
+            open_time += datetime.timedelta(days=1)
+
+    delta = open_time - now
+    hours_left = delta.total_seconds() / 3600
+    if hours_left < 24:
+        return f"{hours_left:.1f} 小时后开盘 ({local_hours} {tz_name})"
+    else:
+        return f"{open_time.strftime('%Y-%m-%d %H:%M')} UTC 开盘 ({local_hours} {tz_name})"
+
+
+def _is_weekend(market: str) -> bool:
+    """Check if today is a weekend (non-trading day) for the market."""
+    if market == "crypto":
+        return False
+    return datetime.datetime.utcnow().weekday() >= 5
+
+
 def run_scheduled(
     market: str = "hk",
     interval_min: int = 30,
@@ -176,34 +257,96 @@ def run_scheduled(
     lookback_days: int = 365,
     webhook_url: str = "",
     max_runs: int = 0,
+    trading_hours_only: bool = False,
 ):
-    """Run scan on a schedule."""
+    """Run scan on a schedule.
+
+    If trading_hours_only=True, only scans during market open hours,
+    sleeps during off-hours and weekends.
+    """
     market_name = {"hk": "港股", "us": "美股", "crypto": "加密"}.get(market, market)
     symbols = _get_symbols(market)
     strategies = _get_strategies(market)
+    mh = MARKET_HOURS.get(market, {})
 
     print(f"📡 定时扫描启动")
     print(f"   市场: {market_name} ({len(symbols)} 品种)")
     print(f"   策略: {len(strategies)} 个")
     print(f"   周期: {candle_interval} | 回溯: {lookback_days} 天")
     print(f"   扫描间隔: {interval_min} 分钟")
+    print(f"   交易时段: {mh.get('local_hours', '全天')} {mh.get('tz_name', '')}")
+    print(f"   仅开盘时间: {'✓' if trading_hours_only else '✗ (全天运行)'}")
     print(f"   飞书通知: {'✓ 已启用' if webhook_url else '✗ 未配置'}")
     print(f"   按 Ctrl+C 停止")
     print()
 
+    # Notify start
+    if webhook_url:
+        mode = "开盘时段" if trading_hours_only else "全天"
+        send_feishu(
+            f"📡 {market_name}定时扫描已启动",
+            [
+                [{"tag": "text", "text": f"品种: {len(symbols)} 个  |  策略: {len(strategies)} 个"}],
+                [{"tag": "text", "text": f"扫描间隔: {interval_min} 分钟  |  模式: {mode}"}],
+                [{"tag": "text", "text": f"交易时段: {mh.get('local_hours', '全天')} {mh.get('tz_name', '')}"}],
+            ],
+            webhook_url,
+        )
+
     run_count = 0
+    notified_closed = False
+
     while True:
         run_count += 1
         if max_runs and run_count > max_runs:
             print("达到最大运行次数，停止。")
             break
 
+        # Check trading hours
+        if trading_hours_only:
+            if _is_weekend(market):
+                if not notified_closed:
+                    next_open = _next_open_time(market)
+                    print(f"  📅 周末休市，{next_open}")
+                    notified_closed = True
+                try:
+                    time.sleep(300)  # check every 5 min on weekends
+                except KeyboardInterrupt:
+                    print("\n扫描已停止。")
+                    break
+                continue
+
+            if not _is_market_open(market):
+                if not notified_closed:
+                    next_open = _next_open_time(market)
+                    now_str = datetime.datetime.utcnow().strftime("%H:%M:%S")
+                    print(f"  [{now_str}] 💤 未开盘，{next_open}")
+                    notified_closed = True
+                try:
+                    time.sleep(60)  # check every 1 min during off-hours
+                except KeyboardInterrupt:
+                    print("\n扫描已停止。")
+                    break
+                continue
+            else:
+                if notified_closed:
+                    now_str = datetime.datetime.utcnow().strftime("%H:%M:%S")
+                    print(f"  [{now_str}] 🔔 开盘！开始扫描")
+                    if webhook_url:
+                        send_feishu(
+                            f"🔔 {market_name}已开盘",
+                            [[{"tag": "text", "text": "定时扫描开始运行"}]],
+                            webhook_url,
+                        )
+                    notified_closed = False
+
         run_single_scan(market, candle_interval, lookback_days, webhook_url)
 
         if max_runs and run_count >= max_runs:
             break
 
-        print(f"  下次扫描: {interval_min} 分钟后")
+        now_str = datetime.datetime.utcnow().strftime("%H:%M:%S")
+        print(f"  [{now_str}] 下次扫描: {interval_min} 分钟后")
         print()
         try:
             time.sleep(interval_min * 60)
@@ -221,6 +364,7 @@ if __name__ == "__main__":
     parser.add_argument("--lookback", type=int, default=365)
     parser.add_argument("--webhook", default="")
     parser.add_argument("--max-runs", type=int, default=0)
+    parser.add_argument("--trading-hours", action="store_true", help="Only scan during market hours")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
@@ -231,4 +375,5 @@ if __name__ == "__main__":
         lookback_days=args.lookback,
         webhook_url=args.webhook,
         max_runs=args.max_runs,
+        trading_hours_only=args.trading_hours,
     )
