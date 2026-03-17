@@ -6,6 +6,7 @@ Or:     hl daytrade tradfi
 from __future__ import annotations
 
 import datetime
+import os
 from typing import Dict, List
 
 import streamlit as st
@@ -210,6 +211,16 @@ def _display_scan(results):
     s3.metric("无信号", len([r for r in results if r["status"] == "no_signal"]))
     s4.metric("错误", len([r for r in results if r["status"] == "error"]))
 
+    # Feishu notifications
+    feishu_url = st.session_state.get("feishu_webhook_tf", "")
+    if feishu_url and (buy_signals or sell_signals):
+        from daytrade.notify_feishu import notify_buy_signal, notify_sell_signal, notify_scan_summary
+        for r in buy_signals:
+            notify_buy_signal(r["symbol"], r["symbol"], r["signal"], r["price"], r["strategy"], feishu_url)
+        for r in sell_signals:
+            notify_sell_signal(r["symbol"], r["symbol"], r["signal"], r["price"], r["strategy"], feishu_url)
+        notify_scan_summary(buy_signals, sell_signals, "美股", feishu_url)
+
     if buy_signals:
         st.markdown("---")
         st.markdown("## 🟢 买入提示")
@@ -273,6 +284,19 @@ st.sidebar.markdown("传统金融 · 长线投资择时")
 interval = st.sidebar.selectbox("K 线周期", ["1d", "1wk", "1h", "4h"], index=0)
 lookback = st.sidebar.slider("回溯天数", 30, 730, 180)
 position_size = st.sidebar.number_input("仓位大小 (股/手)", value=10.0, min_value=0.1, step=1.0)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 飞书通知")
+feishu_url_tf = st.sidebar.text_input(
+    "飞书 Webhook URL",
+    value=st.session_state.get("feishu_webhook_tf", os.environ.get("FEISHU_WEBHOOK_URL", "")),
+    type="password",
+    placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxx",
+    key="feishu_input_tf",
+)
+st.session_state["feishu_webhook_tf"] = feishu_url_tf
+if feishu_url_tf:
+    st.sidebar.success("飞书通知已启用")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("数据来源: **Yahoo Finance**")

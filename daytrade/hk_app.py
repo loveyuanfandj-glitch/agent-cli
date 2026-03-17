@@ -6,6 +6,7 @@ Or:     hl daytrade hk
 from __future__ import annotations
 
 import datetime
+import os
 from typing import Dict, List
 
 import streamlit as st
@@ -233,7 +234,7 @@ def _display_scan(results):
         st.markdown("## 🟢 买入提示")
         st.caption("以下品种触发了买入信号，建议关注")
 
-        # Desktop notification for buy signals
+        # Desktop + Feishu notifications
         buy_names = []
         for r in buy_signals:
             name = next((i["name"] for i in ALL_HK if i["symbol"] == r["symbol"]), r["symbol"])
@@ -243,6 +244,18 @@ def _display_scan(results):
                 f"🟢 {len(buy_names)} 个买入信号",
                 " | ".join(buy_names[:5]),
             )
+
+        # Feishu notifications
+        from daytrade.notify_feishu import notify_buy_signal, notify_sell_signal, notify_scan_summary
+        feishu_url = st.session_state.get("feishu_webhook", "")
+        if feishu_url:
+            for r in buy_signals:
+                name = next((i["name"] for i in ALL_HK if i["symbol"] == r["symbol"]), r["symbol"])
+                notify_buy_signal(r["symbol"], name, r["signal"], r["price"], r["strategy"], feishu_url)
+            for r in sell_signals:
+                name = next((i["name"] for i in ALL_HK if i["symbol"] == r["symbol"]), r["symbol"])
+                notify_sell_signal(r["symbol"], name, r["signal"], r["price"], r["strategy"], feishu_url)
+            notify_scan_summary(buy_signals, sell_signals, "港股", feishu_url)
 
         for r in buy_signals:
             sig = r["signal"]
@@ -317,6 +330,21 @@ st.sidebar.markdown("港股 ETF · 个股 · 长线持有")
 interval = st.sidebar.selectbox("K 线周期", ["1d", "1wk"], index=0)
 lookback = st.sidebar.slider("回溯天数", 30, 730, 365)
 position_size = st.sidebar.number_input("仓位 (股)", value=1000.0, min_value=100.0, step=100.0)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 飞书通知")
+feishu_url = st.sidebar.text_input(
+    "飞书 Webhook URL",
+    value=st.session_state.get("feishu_webhook", os.environ.get("FEISHU_WEBHOOK_URL", "")),
+    type="password",
+    placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxx",
+    key="feishu_input",
+)
+st.session_state["feishu_webhook"] = feishu_url
+if feishu_url:
+    st.sidebar.success("飞书通知已启用")
+else:
+    st.sidebar.caption("扫描到信号时自动推送到飞书群")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("数据来源: **Yahoo Finance**")
