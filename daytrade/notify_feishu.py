@@ -11,11 +11,8 @@ from daytrade.models import Signal, Side
 
 log = logging.getLogger("daytrade.feishu")
 
-# Set via env var or pass directly
-FEISHU_WEBHOOK_URL = os.environ.get(
-    "FEISHU_WEBHOOK_URL",
-    "https://open.larksuite.com/open-apis/bot/v2/hook/d559a4ab-dbae-4d3c-9a1f-42ef33c368af",
-)
+# Set via env var: export FEISHU_WEBHOOK_URL=https://open.larksuite.com/open-apis/bot/v2/hook/xxx
+FEISHU_WEBHOOK_URL = os.environ.get("FEISHU_WEBHOOK_URL", "")
 
 
 def send_feishu(
