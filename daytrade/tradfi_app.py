@@ -201,43 +201,66 @@ def _run_scan(symbols, strategies, descriptions, interval, lookback):
 def _display_scan(results):
     import pandas as pd
     has = [r for r in results if r["status"] == "signal"]
-    no = [r for r in results if r["status"] == "no_signal"]
-    err = [r for r in results if r["status"] == "error"]
+    buy_signals = [r for r in has if r["signal"].side == Side.LONG]
+    sell_signals = [r for r in has if r["signal"].side == Side.SHORT]
 
-    s1, s2, s3 = st.columns(3)
-    s1.metric("触发信号", len(has))
-    s2.metric("无信号", len(no))
-    s3.metric("错误", len(err))
+    s1, s2, s3, s4 = st.columns(4)
+    s1.metric("🟢 买入信号", len(buy_signals))
+    s2.metric("🔴 卖出信号", len(sell_signals))
+    s3.metric("无信号", len([r for r in results if r["status"] == "no_signal"]))
+    s4.metric("错误", len([r for r in results if r["status"] == "error"]))
 
-    if has:
-        st.markdown("### 🎯 信号")
-        for r in has:
+    if buy_signals:
+        st.markdown("---")
+        st.markdown("## 🟢 买入提示")
+        for r in buy_signals:
             sig = r["signal"]
-            icon = "🟢" if sig.side == Side.LONG else "🔴"
-            side = "做多" if sig.side == Side.LONG else "做空"
-            st.success(f"**{icon} {r['symbol']}** — {side} | 策略: **{r['strategy']}** | "
-                       f"价格: {sig.price:.2f} | 置信度: {sig.confidence:.0f}% | {sig.reason}")
+            st.success(
+                f"### 🟢 买入: {r['symbol']}\n"
+                f"策略: **{r['strategy']}** | 信号价: **{sig.price:.2f}** | "
+                f"置信度: {sig.confidence:.0f}% | {sig.reason}"
+            )
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("当前价", f"{r['price']:.2f}")
-            c2.metric("信号价", f"{sig.price:.2f}")
-            if sig.stop_loss: c3.metric("止损", f"{sig.stop_loss:.2f}")
-            if sig.take_profit: c4.metric("止盈", f"{sig.take_profit:.2f}")
+            c2.metric("建议买入价", f"{sig.price:.2f}")
+            if sig.stop_loss:
+                risk = abs(sig.price - sig.stop_loss) / sig.price * 100
+                c3.metric("止损价", f"{sig.stop_loss:.2f}", delta=f"-{risk:.1f}%", delta_color="inverse")
+            if sig.take_profit:
+                reward = abs(sig.take_profit - sig.price) / sig.price * 100
+                c4.metric("目标价", f"{sig.take_profit:.2f}", delta=f"+{reward:.1f}%")
 
+    if sell_signals:
+        st.markdown("---")
+        st.markdown("## 🔴 卖出/止损提示")
+        for r in sell_signals:
+            sig = r["signal"]
+            st.error(f"**🔴 {r['symbol']}** | 策略: **{r['strategy']}** | "
+                     f"价格: {sig.price:.2f} | {sig.reason}")
+
+    if not buy_signals and not sell_signals:
+        st.info("当前无任何买入或卖出信号，市场暂时观望。")
+
+    st.markdown("---")
     st.markdown("### 📋 扫描矩阵")
     rows = []
     for r in results:
         if r["status"] == "signal":
             sig = r["signal"]
             rows.append({"品种": r["symbol"], "策略": r["strategy"],
-                         "信号": "🟢 多" if sig.side == Side.LONG else "🔴 空",
-                         "价格": f"{sig.price:.2f}", "置信度": f"{sig.confidence:.0f}%",
+                         "信号": "🟢 买入" if sig.side == Side.LONG else "🔴 卖出",
+                         "价格": f"{sig.price:.2f}",
+                         "止损": f"{sig.stop_loss:.2f}" if sig.stop_loss else "—",
+                         "目标": f"{sig.take_profit:.2f}" if sig.take_profit else "—",
                          "原因": sig.reason})
         elif r["status"] == "no_signal":
             rows.append({"品种": r["symbol"], "策略": r["strategy"],
-                         "信号": "— 无", "价格": f"{r['price']:.2f}", "置信度": "—", "原因": ""})
+                         "信号": "— 观望", "价格": f"{r['price']:.2f}",
+                         "止损": "—", "目标": "—", "原因": ""})
         else:
             rows.append({"品种": r["symbol"], "策略": r["strategy"],
-                         "信号": "❌", "价格": "—", "置信度": "—", "原因": r.get("message", "")})
+                         "信号": "❌ 错误", "价格": "—",
+                         "止损": "—", "目标": "—", "原因": r.get("message", "")})
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 

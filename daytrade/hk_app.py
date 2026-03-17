@@ -198,24 +198,93 @@ def _run_scan(symbols, strategies, descriptions, interval, lookback):
     return all_results
 
 
+def _send_desktop_notify(title: str, body: str):
+    """Send macOS desktop notification for buy signals."""
+    import subprocess, platform
+    try:
+        if platform.system() == "Darwin":
+            subprocess.run(
+                ["osascript", "-e",
+                 f'display notification "{body}" with title "{title}" sound name "Glass"'],
+                capture_output=True, timeout=5,
+            )
+    except Exception:
+        pass
+
+
 def _display_scan(results):
     import pandas as pd
     has = [r for r in results if r["status"] == "signal"]
-    s1, s2, s3 = st.columns(3)
-    s1.metric("触发信号", len(has))
-    s2.metric("无信号", len([r for r in results if r["status"] == "no_signal"]))
-    s3.metric("错误", len([r for r in results if r["status"] == "error"]))
-    if has:
-        st.markdown("### 🎯 信号")
-        for r in has:
-            sig = r["signal"]; icon = "🟢" if sig.side == Side.LONG else "🔴"
+    buy_signals = [r for r in has if r["signal"].side == Side.LONG]
+    sell_signals = [r for r in has if r["signal"].side == Side.SHORT]
+    no_signal = [r for r in results if r["status"] == "no_signal"]
+    errors = [r for r in results if r["status"] == "error"]
+
+    # Summary with buy/sell split
+    s1, s2, s3, s4 = st.columns(4)
+    s1.metric("🟢 买入信号", len(buy_signals))
+    s2.metric("🔴 卖出信号", len(sell_signals))
+    s3.metric("无信号", len(no_signal))
+    s4.metric("错误", len(errors))
+
+    # ===== BUY SIGNALS (prominent) =====
+    if buy_signals:
+        st.markdown("---")
+        st.markdown("## 🟢 买入提示")
+        st.caption("以下品种触发了买入信号，建议关注")
+
+        # Desktop notification for buy signals
+        buy_names = []
+        for r in buy_signals:
             name = next((i["name"] for i in ALL_HK if i["symbol"] == r["symbol"]), r["symbol"])
-            st.success(f"**{icon} {r['symbol']} {name}** | 策略: **{r['strategy']}** | "
-                       f"价格: {sig.price:.2f} | {sig.reason}")
+            buy_names.append(f"{r['symbol']} {name}")
+        if buy_names:
+            _send_desktop_notify(
+                f"🟢 {len(buy_names)} 个买入信号",
+                " | ".join(buy_names[:5]),
+            )
+
+        for r in buy_signals:
+            sig = r["signal"]
+            name = next((i["name"] for i in ALL_HK if i["symbol"] == r["symbol"]), r["symbol"])
+            st.success(
+                f"### 🟢 买入: {r['symbol']} {name}\n"
+                f"策略: **{r['strategy']}** | 信号价: **{sig.price:.2f}** | "
+                f"置信度: {sig.confidence:.0f}% | {sig.reason}"
+            )
             c1, c2, c3, c4 = st.columns(4)
-            c1.metric("当前价", f"{r['price']:.2f}"); c2.metric("信号价", f"{sig.price:.2f}")
-            if sig.stop_loss: c3.metric("止损", f"{sig.stop_loss:.2f}")
-            if sig.take_profit: c4.metric("止盈", f"{sig.take_profit:.2f}")
+            c1.metric("当前价", f"{r['price']:.2f}")
+            c2.metric("建议买入价", f"{sig.price:.2f}")
+            if sig.stop_loss:
+                risk_pct = abs(sig.price - sig.stop_loss) / sig.price * 100
+                c3.metric("止损价", f"{sig.stop_loss:.2f}", delta=f"-{risk_pct:.1f}%", delta_color="inverse")
+            if sig.take_profit:
+                reward_pct = abs(sig.take_profit - sig.price) / sig.price * 100
+                c4.metric("目标价", f"{sig.take_profit:.2f}", delta=f"+{reward_pct:.1f}%")
+
+    # ===== SELL SIGNALS =====
+    if sell_signals:
+        st.markdown("---")
+        st.markdown("## 🔴 卖出/止损提示")
+        st.caption("以下品种触发了卖出信号，持仓者注意")
+
+        for r in sell_signals:
+            sig = r["signal"]
+            name = next((i["name"] for i in ALL_HK if i["symbol"] == r["symbol"]), r["symbol"])
+            st.error(
+                f"**🔴 {r['symbol']} {name}** | 策略: **{r['strategy']}** | "
+                f"价格: {sig.price:.2f} | {sig.reason}"
+            )
+            c1, c2 = st.columns(2)
+            c1.metric("当前价", f"{r['price']:.2f}")
+            c2.metric("信号价", f"{sig.price:.2f}")
+
+    # ===== NO SIGNAL =====
+    if not buy_signals and not sell_signals:
+        st.info("当前无任何买入或卖出信号，市场暂时观望。")
+
+    # ===== FULL MATRIX =====
+    st.markdown("---")
     st.markdown("### 📋 扫描矩阵")
     rows = []
     for r in results:
@@ -223,14 +292,19 @@ def _display_scan(results):
         if r["status"] == "signal":
             sig = r["signal"]
             rows.append({"代码": r["symbol"], "名称": name, "策略": r["strategy"],
-                         "信号": "🟢 多" if sig.side == Side.LONG else "🔴 空",
-                         "价格": f"{sig.price:.2f}", "原因": sig.reason})
+                         "信号": "🟢 买入" if sig.side == Side.LONG else "🔴 卖出",
+                         "价格": f"{sig.price:.2f}",
+                         "止损": f"{sig.stop_loss:.2f}" if sig.stop_loss else "—",
+                         "目标": f"{sig.take_profit:.2f}" if sig.take_profit else "—",
+                         "原因": sig.reason})
         elif r["status"] == "no_signal":
             rows.append({"代码": r["symbol"], "名称": name, "策略": r["strategy"],
-                         "信号": "—", "价格": f"{r['price']:.2f}", "原因": ""})
+                         "信号": "— 观望", "价格": f"{r['price']:.2f}",
+                         "止损": "—", "目标": "—", "原因": ""})
         else:
             rows.append({"代码": r["symbol"], "名称": name, "策略": r["strategy"],
-                         "信号": "❌", "价格": "—", "原因": r.get("message", "")})
+                         "信号": "❌ 错误", "价格": "—",
+                         "止损": "—", "目标": "—", "原因": r.get("message", "")})
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
