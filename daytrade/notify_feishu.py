@@ -83,8 +83,8 @@ def notify_buy_signal(
         reward_pct = f" (+{abs(signal.take_profit - signal.price) / signal.price * 100:.1f}%)"
 
     content = [
-        [{"tag": "text", "text": f"品种: "}, {"tag": "text", "text": f"{symbol} {name}", "style": ["bold"]}],
-        [{"tag": "text", "text": f"方向: "}, {"tag": "text", "text": "🟢 买入", "style": ["bold"]}],
+        [{"tag": "text", "text": f"品种: {symbol} {name}"}],
+        [{"tag": "text", "text": "方向: 🟢 买入"}],
         [{"tag": "text", "text": f"当前价: {current_price:.2f}  |  信号价: {signal.price:.2f}"}],
         [{"tag": "text", "text": f"策略: {strategy}"}],
         [{"tag": "text", "text": f"原因: {signal.reason}"}],
@@ -108,8 +108,8 @@ def notify_sell_signal(
 ):
     """Send a sell signal notification to Feishu."""
     content = [
-        [{"tag": "text", "text": f"品种: "}, {"tag": "text", "text": f"{symbol} {name}", "style": ["bold"]}],
-        [{"tag": "text", "text": f"方向: "}, {"tag": "text", "text": "🔴 卖出", "style": ["bold"]}],
+        [{"tag": "text", "text": f"品种: {symbol} {name}"}],
+        [{"tag": "text", "text": "方向: 🔴 卖出"}],
         [{"tag": "text", "text": f"当前价: {current_price:.2f}  |  信号价: {signal.price:.2f}"}],
         [{"tag": "text", "text": f"策略: {strategy}"}],
         [{"tag": "text", "text": f"原因: {signal.reason}"}],
@@ -133,7 +133,7 @@ def notify_scan_summary(
     ]
 
     if buy_signals:
-        content.append([{"tag": "text", "text": "── 买入信号 ──", "style": ["bold"]}])
+        content.append([{"tag": "text", "text": "── 买入信号 ──"}])
         for r in buy_signals[:10]:
             sig = r["signal"]
             sl_str = f"  止损:{sig.stop_loss:.2f}" if sig.stop_loss else ""
@@ -143,7 +143,7 @@ def notify_scan_summary(
 
     if sell_signals:
         content.append([{"tag": "text", "text": ""}])
-        content.append([{"tag": "text", "text": "── 卖出信号 ──", "style": ["bold"]}])
+        content.append([{"tag": "text", "text": "── 卖出信号 ──"}])
         for r in sell_signals[:10]:
             sig = r["signal"]
             content.append([{"tag": "text", "text":

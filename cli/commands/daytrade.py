@@ -74,6 +74,36 @@ def hk_cmd(
     )
 
 
+@daytrade_app.command("autoscan")
+def autoscan_cmd(
+    market: str = typer.Option("hk", help="Market: hk, us, crypto"),
+    every: int = typer.Option(30, help="Scan interval in minutes"),
+    candle_interval: str = typer.Option("1d", help="Candle interval"),
+    lookback: int = typer.Option(365, help="Lookback days"),
+    webhook: str = typer.Option("", help="Feishu webhook URL (uses default if empty)"),
+    max_runs: int = typer.Option(0, help="Max scan runs (0 = unlimited)"),
+):
+    """Auto-scan on schedule and push signals to Feishu.
+
+    Examples:
+        hl daytrade autoscan --market hk --every 30
+        hl daytrade autoscan --market us --every 60
+        hl daytrade autoscan --market hk --every 15 --max-runs 1
+    """
+    from daytrade.scheduled_scan import run_scheduled
+    from daytrade.notify_feishu import FEISHU_WEBHOOK_URL
+
+    url = webhook or FEISHU_WEBHOOK_URL
+    run_scheduled(
+        market=market,
+        interval_min=every,
+        candle_interval=candle_interval,
+        lookback_days=lookback,
+        webhook_url=url,
+        max_runs=max_runs,
+    )
+
+
 @daytrade_app.command("backtest")
 def backtest_cmd(
     instrument: str = typer.Option("BTC-PERP", "-i", help="Trading instrument"),
