@@ -53,6 +53,27 @@ def tradfi_cmd(
     )
 
 
+@daytrade_app.command("hk")
+def hk_cmd(
+    port: int = typer.Option(8503, help="Streamlit server port"),
+    host: str = typer.Option("localhost", help="Bind host"),
+):
+    """Launch the HK market GUI (Hong Kong ETFs and stocks)."""
+    import subprocess
+    import os
+
+    app_path = os.path.join(os.path.dirname(__file__), "..", "..", "daytrade", "hk_app.py")
+    app_path = os.path.abspath(app_path)
+
+    typer.echo(f"Starting Nunchi HK Market on http://{host}:{port}")
+    subprocess.run(
+        [sys.executable, "-m", "streamlit", "run", app_path,
+         "--server.port", str(port),
+         "--server.address", host,
+         "--theme.base", "dark"],
+    )
+
+
 @daytrade_app.command("backtest")
 def backtest_cmd(
     instrument: str = typer.Option("BTC-PERP", "-i", help="Trading instrument"),

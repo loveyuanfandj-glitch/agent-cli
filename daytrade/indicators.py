@@ -9,6 +9,7 @@ from daytrade.models import Candle
 
 def ema(values: List[float], period: int) -> List[float]:
     """Exponential Moving Average."""
+    period = int(period)
     if not values or period < 1:
         return []
     result = [values[0]]
@@ -20,6 +21,7 @@ def ema(values: List[float], period: int) -> List[float]:
 
 def sma(values: List[float], period: int) -> List[float]:
     """Simple Moving Average — returns NaN for first (period-1) values."""
+    period = int(period)
     result: List[float] = []
     for i in range(len(values)):
         if i < period - 1:
@@ -31,6 +33,7 @@ def sma(values: List[float], period: int) -> List[float]:
 
 def rsi(closes: List[float], period: int = 14) -> List[float]:
     """Relative Strength Index (Wilder smoothing)."""
+    period = int(period)
     if len(closes) < period + 1:
         return [float("nan")] * len(closes)
 
@@ -68,6 +71,7 @@ def rsi(closes: List[float], period: int = 14) -> List[float]:
 
 def atr(candles: List[Candle], period: int = 14) -> List[float]:
     """Average True Range."""
+    period = int(period)
     if len(candles) < 2:
         return [0.0] * len(candles)
 
@@ -121,6 +125,7 @@ def bollinger_bands(
     closes: List[float], period: int = 20, num_std: float = 2.0
 ) -> Tuple[List[float], List[float], List[float]]:
     """Bollinger Bands — returns (upper, middle, lower)."""
+    period = int(period)
     mid = sma(closes, period)
     upper, lower = [], []
 
