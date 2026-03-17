@@ -1,51 +1,57 @@
-"""Commodity Mean Reversion — Bollinger Band extremes + RSI divergence.
+"""Commodity Value Buy (Long-term) — buy deep pullbacks in long-term uptrends.
 
-When commodities hit BB extremes with RSI confirmation, they tend to snap back.
-Best in ranging / choppy markets. Uses tighter stops than trend strategy.
+Commodities in secular uptrends (gold, silver) periodically pull back 10-20%.
+This strategy buys when price drops to long-term support (200 SMA) with RSI oversold,
+holds for the recovery. Typical holding: weeks to months.
 """
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from daytrade.indicators import rsi, bollinger_bands, atr
+from daytrade.indicators import sma, rsi, atr
 from daytrade.models import Candle, Signal, Side
 from daytrade.strategies.base import DaytradeStrategy
 
 
 class CommodityReversionStrategy(DaytradeStrategy):
     name = "commodity_reversion"
-    description = "商品均值回归 — 布林带极端 + RSI 确认反转"
+    description = "商品抄底 — 长期上升趋势中的深度回调买入"
 
     def __init__(self, params: Optional[Dict[str, Any]] = None):
         super().__init__(params)
         p = {**self.default_params(), **(params or {})}
-        self.bb_period: int = p["bb_period"]
-        self.bb_std: float = p["bb_std"]
+        self.trend_ma: int = p["trend_ma"]
+        self.pullback_pct: float = p["pullback_pct"]
         self.rsi_period: int = p["rsi_period"]
-        self.rsi_ob: float = p["rsi_ob"]
-        self.rsi_os: float = p["rsi_os"]
+        self.rsi_threshold: float = p["rsi_threshold"]
         self.atr_period: int = p["atr_period"]
         self.atr_sl_mult: float = p["atr_sl_mult"]
-        self.risk_reward: float = p["risk_reward"]
+        self.target_pct: float = p["target_pct"]
 
     @classmethod
     def default_params(cls) -> Dict[str, Any]:
         return {
-            "bb_period": 20, "bb_std": 2.0,
-            "rsi_period": 14, "rsi_ob": 70.0, "rsi_os": 30.0,
-            "atr_period": 14, "atr_sl_mult": 1.5, "risk_reward": 2.0,
+            "trend_ma": 200,          # long-term trend
+            "pullback_pct": 5.0,      # % below recent high to trigger
+            "rsi_period": 14,
+            "rsi_threshold": 35.0,    # RSI must be below this
+            "atr_period": 14,
+            "atr_sl_mult": 3.0,
+            "target_pct": 10.0,       # target % recovery from entry
         }
 
     @classmethod
     def param_ranges(cls) -> Dict[str, tuple]:
         return {
-            "bb_std": (1.5, 3.0, 0.25), "rsi_ob": (65, 80, 5),
-            "rsi_os": (20, 35, 5), "atr_sl_mult": (1.0, 3.0, 0.25),
-            "risk_reward": (1.5, 3.5, 0.5),
+            "trend_ma": (100, 250, 50),
+            "pullback_pct": (3.0, 15.0, 1.0),
+            "rsi_threshold": (25, 40, 5),
+            "atr_sl_mult": (2.0, 5.0, 0.5),
+            "target_pct": (5.0, 20.0, 2.5),
         }
 
     def on_candle(self, candle: Candle, history: List[Candle]) -> Optional[Signal]:
-        min_len = max(self.bb_period + 1, self.rsi_period + 2, self.atr_period + 1)
+        min_len = max(self.trend_ma + 1, self.rsi_period + 2, self.atr_period + 1, 50)
         if len(history) < min_len:
             return None
 
@@ -53,23 +59,30 @@ class CommodityReversionStrategy(DaytradeStrategy):
             return self._check_exit(candle)
 
         closes = [c.close for c in history]
-        upper, mid, lower = bollinger_bands(closes, self.bb_period, self.bb_std)
+        trend = sma(closes, self.trend_ma)
         rsi_vals = rsi(closes, self.rsi_period)
         atr_vals = atr(history, self.atr_period)
+
+        cur_trend = trend[-1]
         cur_rsi = rsi_vals[-1]
-        prev_rsi = rsi_vals[-2]
         cur_atr = atr_vals[-1]
 
-        if cur_rsi != cur_rsi or cur_atr != cur_atr:
+        if cur_trend != cur_trend or cur_rsi != cur_rsi or cur_atr != cur_atr:
             return None
 
-        # Long: price at lower BB + RSI oversold turning up
-        if candle.close <= lower[-1] and prev_rsi < self.rsi_os and cur_rsi > prev_rsi:
+        # Only buy in uptrend: price was above 200 SMA recently
+        above_trend_recently = any(c.close > cur_trend for c in history[-50:])
+        if not above_trend_recently:
+            return None
+
+        # Measure pullback from recent high (last 50 candles)
+        recent_high = max(c.high for c in history[-50:])
+        pullback = (recent_high - candle.close) / recent_high * 100
+
+        # Buy conditions: deep pullback + RSI oversold + price near/below trend MA
+        if pullback >= self.pullback_pct and cur_rsi <= self.rsi_threshold:
             sl = candle.close - cur_atr * self.atr_sl_mult
-            tp = mid[-1]  # target = BB midline
-            risk = candle.close - sl
-            if risk > 0:
-                tp = max(tp, candle.close + risk * self.risk_reward)
+            tp = candle.close * (1 + self.target_pct / 100)
             self._in_position = True
             self._position_side = "long"
             self._entry_price = candle.close
@@ -78,50 +91,21 @@ class CommodityReversionStrategy(DaytradeStrategy):
             self._take_profit = tp
             return Signal(
                 timestamp_ms=candle.timestamp_ms, side=Side.LONG, price=candle.close,
-                reason=f"商品均值回归做多 (RSI={cur_rsi:.0f}, 触及BB下轨)",
+                reason=f"趋势回调抄底 (回撤={pullback:.1f}%, RSI={cur_rsi:.0f})",
                 confidence=70, stop_loss=sl, take_profit=tp,
-                meta={"rsi": cur_rsi, "bb_lower": lower[-1], "bb_mid": mid[-1]},
-            )
-
-        # Short: price at upper BB + RSI overbought turning down
-        if candle.close >= upper[-1] and prev_rsi > self.rsi_ob and cur_rsi < prev_rsi:
-            sl = candle.close + cur_atr * self.atr_sl_mult
-            tp = mid[-1]
-            risk = sl - candle.close
-            if risk > 0:
-                tp = min(tp, candle.close - risk * self.risk_reward)
-            self._in_position = True
-            self._position_side = "short"
-            self._entry_price = candle.close
-            self._entry_time = candle.timestamp_ms
-            self._stop_loss = sl
-            self._take_profit = tp
-            return Signal(
-                timestamp_ms=candle.timestamp_ms, side=Side.SHORT, price=candle.close,
-                reason=f"商品均值回归做空 (RSI={cur_rsi:.0f}, 触及BB上轨)",
-                confidence=70, stop_loss=sl, take_profit=tp,
-                meta={"rsi": cur_rsi, "bb_upper": upper[-1], "bb_mid": mid[-1]},
+                meta={"pullback_pct": round(pullback, 1), "rsi": round(cur_rsi, 1),
+                      "recent_high": recent_high, "trend_ma": cur_trend},
             )
 
         return None
 
     def _check_exit(self, candle: Candle) -> Optional[Signal]:
-        if self._position_side == "long":
-            if candle.low <= self._stop_loss:
-                self._in_position = False
-                return Signal(timestamp_ms=candle.timestamp_ms, side=Side.LONG,
-                              price=self._stop_loss, reason="止损")
-            if candle.high >= self._take_profit:
-                self._in_position = False
-                return Signal(timestamp_ms=candle.timestamp_ms, side=Side.LONG,
-                              price=self._take_profit, reason="止盈 (回归中轨)")
-        else:
-            if candle.high >= self._stop_loss:
-                self._in_position = False
-                return Signal(timestamp_ms=candle.timestamp_ms, side=Side.SHORT,
-                              price=self._stop_loss, reason="止损")
-            if candle.low <= self._take_profit:
-                self._in_position = False
-                return Signal(timestamp_ms=candle.timestamp_ms, side=Side.SHORT,
-                              price=self._take_profit, reason="止盈 (回归中轨)")
+        if candle.low <= self._stop_loss:
+            self._in_position = False
+            return Signal(timestamp_ms=candle.timestamp_ms, side=Side.LONG,
+                          price=self._stop_loss, reason="止损")
+        if candle.high >= self._take_profit:
+            self._in_position = False
+            return Signal(timestamp_ms=candle.timestamp_ms, side=Side.LONG,
+                          price=self._take_profit, reason=f"止盈 (+{self.target_pct}%)")
         return None

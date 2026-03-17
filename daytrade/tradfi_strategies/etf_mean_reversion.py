@@ -1,148 +1,125 @@
-"""ETF Mean Reversion — intraday reversion on liquid index ETFs.
+"""ETF 定投增强 (Long-term) — enhanced DCA with RSI timing.
 
-SPY/QQQ tend to revert to VWAP and moving averages during the session.
-Uses RSI extremes + Bollinger Band touch as entry trigger.
-Target = VWAP or BB midline, whichever is closer.
+Improves on simple dollar-cost averaging by timing entries:
+- Buy more when RSI is oversold (fear = opportunity)
+- Buy less or skip when RSI is overbought
+- Never sell, only accumulate (long-only)
+Uses weekly/daily timeframe. Exit only via trailing stop on major trend break.
 """
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from daytrade.indicators import rsi, bollinger_bands, vwap, atr
+from daytrade.indicators import sma, rsi, atr
 from daytrade.models import Candle, Signal, Side
 from daytrade.strategies.base import DaytradeStrategy
 
 
 class ETFMeanReversionStrategy(DaytradeStrategy):
-    name = "etf_mean_reversion"
-    description = "ETF 日内回归 — RSI+BB 超买超卖反向交易"
+    name = "etf_smart_dca"
+    description = "ETF 智能定投 — RSI 择时增强的定投策略"
 
     def __init__(self, params: Optional[Dict[str, Any]] = None):
         super().__init__(params)
         p = {**self.default_params(), **(params or {})}
         self.rsi_period: int = p["rsi_period"]
-        self.rsi_ob: float = p["rsi_ob"]
-        self.rsi_os: float = p["rsi_os"]
-        self.bb_period: int = p["bb_period"]
-        self.bb_std: float = p["bb_std"]
+        self.rsi_buy_threshold: float = p["rsi_buy_threshold"]
+        self.trend_ma: int = p["trend_ma"]
         self.atr_period: int = p["atr_period"]
-        self.atr_sl_mult: float = p["atr_sl_mult"]
-        self.max_trades_per_day: int = p["max_trades_per_day"]
+        self.trail_atr_mult: float = p["trail_atr_mult"]
+        self.buy_interval: int = p["buy_interval"]
 
-        self._current_day: int = -1
-        self._trades_today: int = 0
+        self._candle_count: int = 0
+        self._trailing_stop: float = 0.0
+        self._best_price: float = 0.0
 
     @classmethod
     def default_params(cls) -> Dict[str, Any]:
         return {
-            "rsi_period": 14, "rsi_ob": 75.0, "rsi_os": 25.0,
-            "bb_period": 20, "bb_std": 2.0,
-            "atr_period": 14, "atr_sl_mult": 1.5,
-            "max_trades_per_day": 3,
+            "rsi_period": 14,
+            "rsi_buy_threshold": 40.0,  # buy when RSI < this
+            "trend_ma": 200,
+            "atr_period": 14,
+            "trail_atr_mult": 4.0,      # very wide stop for long term
+            "buy_interval": 20,         # check every N candles (~monthly on daily)
         }
 
     @classmethod
     def param_ranges(cls) -> Dict[str, tuple]:
         return {
-            "rsi_ob": (65, 85, 5), "rsi_os": (15, 35, 5),
-            "bb_std": (1.5, 3.0, 0.25), "atr_sl_mult": (1.0, 2.5, 0.25),
-            "max_trades_per_day": (1, 5, 1),
+            "rsi_buy_threshold": (30, 50, 5),
+            "trend_ma": (100, 250, 50),
+            "trail_atr_mult": (3.0, 6.0, 0.5),
+            "buy_interval": (5, 30, 5),
         }
 
     def reset(self):
         super().reset()
-        self._current_day = -1
-        self._trades_today = 0
+        self._candle_count = 0
+        self._trailing_stop = 0.0
+        self._best_price = 0.0
 
     def on_candle(self, candle: Candle, history: List[Candle]) -> Optional[Signal]:
-        min_len = max(self.bb_period + 1, self.rsi_period + 2, self.atr_period + 1)
+        self._candle_count += 1
+        min_len = max(self.trend_ma + 1, self.rsi_period + 2, self.atr_period + 1)
         if len(history) < min_len:
             return None
 
-        day = candle.timestamp_ms // 86_400_000
-        if day != self._current_day:
-            self._current_day = day
-            self._trades_today = 0
-
         if self._in_position:
-            return self._check_exit(candle, history)
+            atr_vals = atr(history, self.atr_period)
+            return self._check_exit(candle, atr_vals[-1])
 
-        if self._trades_today >= self.max_trades_per_day:
+        # Only evaluate at buy intervals
+        if self._candle_count % self.buy_interval != 0:
             return None
 
         closes = [c.close for c in history]
+        trend = sma(closes, self.trend_ma)
         rsi_vals = rsi(closes, self.rsi_period)
-        upper, mid, lower = bollinger_bands(closes, self.bb_period, self.bb_std)
         atr_vals = atr(history, self.atr_period)
-        vwap_vals = vwap(history)
 
+        cur_trend = trend[-1]
         cur_rsi = rsi_vals[-1]
-        prev_rsi = rsi_vals[-2]
         cur_atr = atr_vals[-1]
-        cur_vwap = vwap_vals[-1]
 
-        if cur_rsi != cur_rsi or cur_atr != cur_atr:
+        if any(v != v for v in [cur_trend, cur_rsi, cur_atr]):
             return None
 
-        # Long: RSI oversold + at/below lower BB
-        if cur_rsi < self.rsi_os and candle.close <= lower[-1] and cur_rsi > prev_rsi:
-            sl = candle.close - cur_atr * self.atr_sl_mult
-            # Target = closer of VWAP and BB mid
-            tp = min(cur_vwap, mid[-1]) if cur_vwap > candle.close else mid[-1]
-            self._in_position = True
-            self._position_side = "long"
-            self._entry_price = candle.close
-            self._entry_time = candle.timestamp_ms
-            self._stop_loss = sl
-            self._take_profit = tp
-            self._trades_today += 1
-            return Signal(
-                timestamp_ms=candle.timestamp_ms, side=Side.LONG, price=candle.close,
-                reason=f"ETF 回归做多 (RSI={cur_rsi:.0f}, BB下轨)",
-                confidence=70, stop_loss=sl, take_profit=tp,
-                meta={"rsi": cur_rsi, "bb_lower": lower[-1], "vwap": cur_vwap},
-            )
+        # Long-term trend must be up or flat (price not too far below MA200)
+        max_below_pct = 10.0  # allow buying up to 10% below MA200
+        if candle.close < cur_trend * (1 - max_below_pct / 100):
+            return None
 
-        # Short: RSI overbought + at/above upper BB
-        if cur_rsi > self.rsi_ob and candle.close >= upper[-1] and cur_rsi < prev_rsi:
-            sl = candle.close + cur_atr * self.atr_sl_mult
-            tp = max(cur_vwap, mid[-1]) if cur_vwap < candle.close else mid[-1]
-            self._in_position = True
-            self._position_side = "short"
-            self._entry_price = candle.close
-            self._entry_time = candle.timestamp_ms
-            self._stop_loss = sl
-            self._take_profit = tp
-            self._trades_today += 1
-            return Signal(
-                timestamp_ms=candle.timestamp_ms, side=Side.SHORT, price=candle.close,
-                reason=f"ETF 回归做空 (RSI={cur_rsi:.0f}, BB上轨)",
-                confidence=70, stop_loss=sl, take_profit=tp,
-                meta={"rsi": cur_rsi, "bb_upper": upper[-1], "vwap": cur_vwap},
-            )
+        # RSI timing: only buy when RSI shows weakness (good value)
+        if cur_rsi > self.rsi_buy_threshold:
+            return None
 
-        return None
+        # Enter
+        sl = candle.close - cur_atr * self.trail_atr_mult
+        self._in_position = True
+        self._position_side = "long"
+        self._entry_price = candle.close
+        self._entry_time = candle.timestamp_ms
+        self._stop_loss = sl
+        self._take_profit = 0
+        self._trailing_stop = sl
+        self._best_price = candle.close
+        return Signal(
+            timestamp_ms=candle.timestamp_ms, side=Side.LONG, price=candle.close,
+            reason=f"智能定投买入 (RSI={cur_rsi:.0f}, 低于阈值{self.rsi_buy_threshold})",
+            confidence=65, stop_loss=sl,
+            meta={"rsi": round(cur_rsi, 1), "trend_ma": cur_trend,
+                  "above_ma": candle.close > cur_trend},
+        )
 
-    def _check_exit(self, candle: Candle, history: List[Candle]) -> Optional[Signal]:
-        vwap_vals = vwap(history)
-        cur_vwap = vwap_vals[-1] if vwap_vals else 0
-
-        if self._position_side == "long":
-            if candle.low <= self._stop_loss:
-                self._in_position = False
-                return Signal(timestamp_ms=candle.timestamp_ms, side=Side.LONG,
-                              price=self._stop_loss, reason="止损")
-            if candle.high >= self._take_profit or (cur_vwap > 0 and candle.close >= cur_vwap):
-                self._in_position = False
-                return Signal(timestamp_ms=candle.timestamp_ms, side=Side.LONG,
-                              price=min(candle.close, self._take_profit), reason="止盈 (回归)")
-        else:
-            if candle.high >= self._stop_loss:
-                self._in_position = False
-                return Signal(timestamp_ms=candle.timestamp_ms, side=Side.SHORT,
-                              price=self._stop_loss, reason="止损")
-            if candle.low <= self._take_profit or (cur_vwap > 0 and candle.close <= cur_vwap):
-                self._in_position = False
-                return Signal(timestamp_ms=candle.timestamp_ms, side=Side.SHORT,
-                              price=max(candle.close, self._take_profit), reason="止盈 (回归)")
+    def _check_exit(self, candle: Candle, cur_atr: float) -> Optional[Signal]:
+        if cur_atr != cur_atr:
+            return None
+        if candle.high > self._best_price:
+            self._best_price = candle.high
+            self._trailing_stop = max(self._trailing_stop, self._best_price - cur_atr * self.trail_atr_mult)
+        if candle.low <= self._trailing_stop:
+            self._in_position = False
+            return Signal(timestamp_ms=candle.timestamp_ms, side=Side.LONG,
+                          price=max(self._trailing_stop, candle.low), reason="趋势破位出场")
         return None

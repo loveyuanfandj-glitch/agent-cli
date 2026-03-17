@@ -39,7 +39,7 @@ TRADFI_INSTRUMENTS = [
     {"symbol": "FXY", "name": "日元 ETF", "category": "外汇"},
     {"symbol": "FXB", "name": "英镑 ETF", "category": "外汇"},
     {"symbol": "UUP", "name": "美元指数 ETF", "category": "外汇"},
-    # Mega caps (popular for intraday)
+    # Mega caps
     {"symbol": "AAPL", "name": "Apple", "category": "个股"},
     {"symbol": "MSFT", "name": "Microsoft", "category": "个股"},
     {"symbol": "NVDA", "name": "NVIDIA", "category": "个股"},
@@ -47,6 +47,18 @@ TRADFI_INSTRUMENTS = [
     {"symbol": "AMZN", "name": "Amazon", "category": "个股"},
     {"symbol": "META", "name": "Meta (Facebook)", "category": "个股"},
     {"symbol": "GOOG", "name": "Alphabet (Google)", "category": "个股"},
+    # Crypto-related stocks
+    {"symbol": "COIN", "name": "Coinbase", "category": "加密个股"},
+    {"symbol": "MSTR", "name": "MicroStrategy (BTC 持仓)", "category": "加密个股"},
+    {"symbol": "MARA", "name": "Marathon Digital (BTC 矿企)", "category": "加密个股"},
+    {"symbol": "RIOT", "name": "Riot Platforms (BTC 矿企)", "category": "加密个股"},
+    {"symbol": "CLSK", "name": "CleanSpark (BTC 矿企)", "category": "加密个股"},
+    {"symbol": "HUT", "name": "Hut 8 Mining", "category": "加密个股"},
+    {"symbol": "BITF", "name": "Bitfarms (矿企)", "category": "加密个股"},
+    {"symbol": "HOOD", "name": "Robinhood", "category": "加密个股"},
+    {"symbol": "SQ", "name": "Block (Square)", "category": "加密个股"},
+    {"symbol": "IBIT", "name": "iShares Bitcoin ETF", "category": "加密个股"},
+    {"symbol": "FBTC", "name": "Fidelity Bitcoin ETF", "category": "加密个股"},
 ]
 
 # yfinance interval mapping
@@ -58,16 +70,18 @@ _INTERVAL_MAP = {
     "1h": "60m",
     "4h": "60m",  # yfinance doesn't have 4h; will resample
     "1d": "1d",
+    "1wk": "1wk",
+    "1mo": "1mo",
 }
 
-# yfinance period mapping based on lookback days
-# intraday data: max 60 days for 15m, max 7 days for 1m
 _MAX_INTRADAY_DAYS = {
     "5m": 60,
     "15m": 60,
     "30m": 60,
     "60m": 730,
     "1d": 10000,
+    "1wk": 10000,
+    "1mo": 10000,
 }
 
 

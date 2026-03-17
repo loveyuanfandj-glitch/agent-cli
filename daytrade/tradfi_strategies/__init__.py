@@ -1,19 +1,14 @@
-"""TradFi strategy registry — separate strategies for commodities, stocks, and ETFs."""
+"""TradFi strategy registry — long-term strategies for commodities, stocks, and ETFs."""
 from __future__ import annotations
 
-from typing import Dict, List, Type
+from typing import Dict, Type
 
 from daytrade.strategies.base import DaytradeStrategy
 
-# Commodity strategies
 from daytrade.tradfi_strategies.commodity_trend import CommodityTrendStrategy
 from daytrade.tradfi_strategies.commodity_reversion import CommodityReversionStrategy
-
-# Stock strategies
 from daytrade.tradfi_strategies.stock_gap_fill import GapFillStrategy
 from daytrade.tradfi_strategies.stock_vwap_scalp import VWAPScalpStrategy
-
-# ETF strategies
 from daytrade.tradfi_strategies.etf_orb import ETFOpeningRangeStrategy
 from daytrade.tradfi_strategies.etf_mean_reversion import ETFMeanReversionStrategy
 
@@ -24,26 +19,26 @@ COMMODITY_STRATEGIES: Dict[str, Type[DaytradeStrategy]] = {
 }
 
 STOCK_STRATEGIES: Dict[str, Type[DaytradeStrategy]] = {
-    "stock_gap_fill": GapFillStrategy,
-    "stock_vwap_scalp": VWAPScalpStrategy,
+    "stock_momentum": GapFillStrategy,
+    "stock_ma_pullback": VWAPScalpStrategy,
 }
 
 ETF_STRATEGIES: Dict[str, Type[DaytradeStrategy]] = {
-    "etf_orb": ETFOpeningRangeStrategy,
-    "etf_mean_reversion": ETFMeanReversionStrategy,
+    "etf_dual_momentum": ETFOpeningRangeStrategy,
+    "etf_smart_dca": ETFMeanReversionStrategy,
 }
 
 COMMODITY_DESCRIPTIONS: Dict[str, str] = {
-    "commodity_trend": "商品趋势跟随 — EMA+ADX 识别趋势，ATR 追踪止损",
-    "commodity_reversion": "商品均值回归 — 布林带极端 + RSI 背离入场",
+    "commodity_trend": "商品趋势跟随 — MA 交叉 + ADX 过滤，宽幅追踪止损 (持有数周~数月)",
+    "commodity_reversion": "商品抄底 — 上升趋势中深度回调 + RSI 超卖买入 (持有数周~数月)",
 }
 
 STOCK_DESCRIPTIONS: Dict[str, str] = {
-    "stock_gap_fill": "缺口回补 — 隔夜跳空后日内回补，胜率 60-70%",
-    "stock_vwap_scalp": "VWAP 刮头皮 — 机构基准价附近反复做多/做空",
+    "stock_momentum": "个股动量突破 — 放量突破新高后持有，追踪止损保护 (持有数周~数月)",
+    "stock_ma_pullback": "个股均线回踩 — 上升趋势回踩 MA20/50 时买入 (持有数天~数周)",
 }
 
 ETF_DESCRIPTIONS: Dict[str, str] = {
-    "etf_orb": "ETF 开盘区间突破 — 前 30 分钟定区间，突破后跟随",
-    "etf_mean_reversion": "ETF 日内回归 — RSI + 布林带超卖/超买反向交易",
+    "etf_dual_momentum": "ETF 双动量 — 绝对动量 + 趋势过滤，低频轮动 (持有数月)",
+    "etf_smart_dca": "ETF 智能定投 — RSI 择时增强定投，低买高持 (持有数月~数年)",
 }

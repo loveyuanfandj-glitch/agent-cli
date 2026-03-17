@@ -31,7 +31,7 @@ _yf = YahooFinanceProvider()
 # Instrument groups
 # ---------------------------------------------------------------------------
 COMMODITY_SYMBOLS = [i for i in TRADFI_INSTRUMENTS if i["category"] == "商品"]
-STOCK_SYMBOLS = [i for i in TRADFI_INSTRUMENTS if i["category"] == "个股"]
+STOCK_SYMBOLS = [i for i in TRADFI_INSTRUMENTS if i["category"] in ("个股", "加密个股")]
 ETF_SYMBOLS = [i for i in TRADFI_INSTRUMENTS if i["category"] in ("美股指数", "板块", "债券", "波动率", "外汇")]
 
 
@@ -245,14 +245,15 @@ def _display_scan(results):
 # Shared sidebar
 # ---------------------------------------------------------------------------
 st.sidebar.title("🏛 Nunchi TradFi")
-st.sidebar.markdown("传统金融 · 日内择时")
+st.sidebar.markdown("传统金融 · 长线投资择时")
 
-interval = st.sidebar.selectbox("K 线周期", ["5m", "15m", "30m", "1h", "4h"], index=1)
-lookback = st.sidebar.slider("回溯天数", 1, 30, 7)
-position_size = st.sidebar.number_input("仓位大小", value=10.0, min_value=0.1, step=1.0)
+interval = st.sidebar.selectbox("K 线周期", ["1d", "1wk", "1h", "4h"], index=0)
+lookback = st.sidebar.slider("回溯天数", 30, 730, 180)
+position_size = st.sidebar.number_input("仓位大小 (股/手)", value=10.0, min_value=0.1, step=1.0)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("数据来源: **Yahoo Finance**")
+st.sidebar.markdown("策略类型: **长线持有** (数周~数月)")
 st.sidebar.markdown("费率: ETF/股票 1 bps, 商品 2 bps")
 
 
@@ -314,7 +315,7 @@ with tab_stock:
 
     with sub_bt:
         st.subheader("📈 个股回测")
-        st.caption("AAPL · MSFT · NVDA · TSLA · AMZN · META · GOOG")
+        st.caption("科技股: AAPL MSFT NVDA TSLA | 加密股: COIN MSTR MARA RIOT IBIT")
 
         stk_sym = st.selectbox("品种", [i["symbol"] for i in STOCK_SYMBOLS],
                                 format_func=lambda s: f"{s} — {next((i['name'] for i in STOCK_SYMBOLS if i['symbol']==s), s)}",

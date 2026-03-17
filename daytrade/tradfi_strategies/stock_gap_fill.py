@@ -1,185 +1,113 @@
-"""Gap Fill — trade overnight gap fill on individual stocks.
+"""Stock Momentum Breakout (Long-term) — buy breakouts to new highs on volume.
 
-Stocks frequently gap up/down overnight then fill the gap during the session.
-Gap fill rate is ~60-70% for gaps < 2%, especially on liquid mega-caps.
-
-Logic:
-1. Detect overnight gap (first candle vs previous day's close)
-2. Wait for initial momentum to exhaust (don't fade immediately)
-3. Enter in gap-fill direction after 2-3 candles of stabilization
-4. Target = previous close (full gap fill), SL = gap extension
+When a stock breaks above a consolidation range on high volume,
+it tends to continue trending. Classic Darvas Box / O'Neil CANSLIM approach.
+Typical holding: weeks to months.
 """
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from daytrade.indicators import atr
+from daytrade.indicators import sma, atr, ema
 from daytrade.models import Candle, Signal, Side
 from daytrade.strategies.base import DaytradeStrategy
 
 
 class GapFillStrategy(DaytradeStrategy):
-    name = "stock_gap_fill"
-    description = "缺口回补 — 隔夜跳空后日内回补"
+    name = "stock_momentum"
+    description = "个股动量突破 — 放量突破新高后持有，追踪止损保护利润"
 
     def __init__(self, params: Optional[Dict[str, Any]] = None):
         super().__init__(params)
         p = {**self.default_params(), **(params or {})}
-        self.min_gap_pct: float = p["min_gap_pct"]
-        self.max_gap_pct: float = p["max_gap_pct"]
-        self.wait_candles: int = p["wait_candles"]
+        self.lookback: int = p["lookback"]
+        self.volume_mult: float = p["volume_mult"]
         self.atr_period: int = p["atr_period"]
-        self.atr_sl_mult: float = p["atr_sl_mult"]
-        self.fill_target_pct: float = p["fill_target_pct"]
+        self.trail_atr_mult: float = p["trail_atr_mult"]
+        self.trend_ma: int = p["trend_ma"]
 
-        self._current_day: int = -1
-        self._prev_day_close: float = 0.0
-        self._gap_detected: bool = False
-        self._gap_direction: str = ""  # "up" or "down"
-        self._gap_open: float = 0.0
-        self._session_candle: int = 0
-        self._traded_today: bool = False
+        self._trailing_stop: float = 0.0
+        self._best_price: float = 0.0
 
     @classmethod
     def default_params(cls) -> Dict[str, Any]:
         return {
-            "min_gap_pct": 0.3,      # minimum gap % to trade
-            "max_gap_pct": 3.0,      # skip extreme gaps (news-driven)
-            "wait_candles": 2,       # wait N candles before entry
+            "lookback": 50,          # period high lookback
+            "volume_mult": 1.5,      # breakout volume > avg * mult
             "atr_period": 14,
-            "atr_sl_mult": 1.5,
-            "fill_target_pct": 80.0, # target % of gap filled (80% = near full)
+            "trail_atr_mult": 3.0,   # wide trailing stop
+            "trend_ma": 50,          # must be above this MA
         }
 
     @classmethod
     def param_ranges(cls) -> Dict[str, tuple]:
         return {
-            "min_gap_pct": (0.2, 1.0, 0.1),
-            "max_gap_pct": (1.5, 5.0, 0.5),
-            "wait_candles": (1, 5, 1),
-            "atr_sl_mult": (1.0, 3.0, 0.25),
-            "fill_target_pct": (50, 100, 10),
+            "lookback": (20, 100, 10),
+            "volume_mult": (1.0, 3.0, 0.25),
+            "trail_atr_mult": (2.0, 5.0, 0.5),
+            "trend_ma": (20, 100, 10),
         }
 
     def reset(self):
         super().reset()
-        self._current_day = -1
-        self._prev_day_close = 0.0
-        self._gap_detected = False
-        self._gap_direction = ""
-        self._gap_open = 0.0
-        self._session_candle = 0
-        self._traded_today = False
+        self._trailing_stop = 0.0
+        self._best_price = 0.0
 
     def on_candle(self, candle: Candle, history: List[Candle]) -> Optional[Signal]:
-        day = candle.timestamp_ms // 86_400_000
-
-        # New day
-        if day != self._current_day:
-            if self._current_day != -1 and history:
-                # Find previous day's last candle
-                for c in reversed(history[:-1]):
-                    if c.timestamp_ms // 86_400_000 != day:
-                        self._prev_day_close = c.close
-                        break
-
-            self._current_day = day
-            self._gap_detected = False
-            self._gap_direction = ""
-            self._session_candle = 0
-            self._traded_today = False
-
-        self._session_candle += 1
+        min_len = max(self.lookback + 1, self.atr_period + 1, self.trend_ma + 1, 30)
+        if len(history) < min_len:
+            return None
 
         if self._in_position:
-            return self._check_exit(candle)
-
-        if self._traded_today:
-            return None
-
-        # Detect gap on first candle of day
-        if self._session_candle == 1 and self._prev_day_close > 0:
-            gap_pct = (candle.open - self._prev_day_close) / self._prev_day_close * 100
-
-            if abs(gap_pct) >= self.min_gap_pct and abs(gap_pct) <= self.max_gap_pct:
-                self._gap_detected = True
-                self._gap_direction = "up" if gap_pct > 0 else "down"
-                self._gap_open = candle.open
-            return None
-
-        # Wait for stabilization, then enter
-        if (self._gap_detected
-                and self._session_candle == self.wait_candles + 1
-                and not self._traded_today):
-
-            if len(history) < self.atr_period + 1:
-                return None
-
             atr_vals = atr(history, self.atr_period)
-            cur_atr = atr_vals[-1]
-            if cur_atr != cur_atr:
-                return None
+            return self._check_exit(candle, atr_vals[-1])
 
-            gap_size = abs(self._gap_open - self._prev_day_close)
-            fill_target = gap_size * (self.fill_target_pct / 100)
+        closes = [c.close for c in history]
+        atr_vals = atr(history, self.atr_period)
+        cur_atr = atr_vals[-1]
+        if cur_atr != cur_atr:
+            return None
 
-            # Gap up → fade short (expect fill down to prev close)
-            if self._gap_direction == "up":
-                tp = candle.close - fill_target
-                sl = candle.close + cur_atr * self.atr_sl_mult
-                self._in_position = True
-                self._position_side = "short"
-                self._entry_price = candle.close
-                self._entry_time = candle.timestamp_ms
-                self._stop_loss = sl
-                self._take_profit = tp
-                self._traded_today = True
-                return Signal(
-                    timestamp_ms=candle.timestamp_ms, side=Side.SHORT, price=candle.close,
-                    reason=f"缺口回补做空 (跳空+{gap_size / self._prev_day_close * 100:.1f}%)",
-                    confidence=65, stop_loss=sl, take_profit=tp,
-                    meta={"gap_pct": round(gap_size / self._prev_day_close * 100, 2),
-                          "prev_close": self._prev_day_close, "gap_open": self._gap_open},
-                )
+        # Trend filter: price above MA
+        ma_vals = sma(closes, self.trend_ma)
+        if ma_vals[-1] != ma_vals[-1] or candle.close < ma_vals[-1]:
+            return None
 
-            # Gap down → fade long (expect fill up to prev close)
-            if self._gap_direction == "down":
-                tp = candle.close + fill_target
-                sl = candle.close - cur_atr * self.atr_sl_mult
-                self._in_position = True
-                self._position_side = "long"
-                self._entry_price = candle.close
-                self._entry_time = candle.timestamp_ms
-                self._stop_loss = sl
-                self._take_profit = tp
-                self._traded_today = True
-                return Signal(
-                    timestamp_ms=candle.timestamp_ms, side=Side.LONG, price=candle.close,
-                    reason=f"缺口回补做多 (跳空-{gap_size / self._prev_day_close * 100:.1f}%)",
-                    confidence=65, stop_loss=sl, take_profit=tp,
-                    meta={"gap_pct": round(gap_size / self._prev_day_close * 100, 2),
-                          "prev_close": self._prev_day_close, "gap_open": self._gap_open},
-                )
+        # Check for new high (lookback period)
+        prev_high = max(c.high for c in history[-self.lookback - 1:-1])
+
+        # Volume check
+        avg_vol = sum(c.volume for c in history[-20:]) / 20
+        vol_ok = candle.volume >= avg_vol * self.volume_mult if avg_vol > 0 else False
+
+        # Breakout: new high + volume confirmation
+        if candle.close > prev_high and vol_ok:
+            sl = candle.close - cur_atr * self.trail_atr_mult
+            self._in_position = True
+            self._position_side = "long"
+            self._entry_price = candle.close
+            self._entry_time = candle.timestamp_ms
+            self._stop_loss = sl
+            self._take_profit = 0  # no fixed TP
+            self._trailing_stop = sl
+            self._best_price = candle.close
+            return Signal(
+                timestamp_ms=candle.timestamp_ms, side=Side.LONG, price=candle.close,
+                reason=f"放量突破 {self.lookback} 期新高 (vol={candle.volume / avg_vol:.1f}x)",
+                confidence=70, stop_loss=sl,
+                meta={"prev_high": prev_high, "volume_ratio": round(candle.volume / avg_vol, 1)},
+            )
 
         return None
 
-    def _check_exit(self, candle: Candle) -> Optional[Signal]:
-        if self._position_side == "long":
-            if candle.low <= self._stop_loss:
-                self._in_position = False
-                return Signal(timestamp_ms=candle.timestamp_ms, side=Side.LONG,
-                              price=self._stop_loss, reason="止损")
-            if candle.high >= self._take_profit:
-                self._in_position = False
-                return Signal(timestamp_ms=candle.timestamp_ms, side=Side.LONG,
-                              price=self._take_profit, reason="止盈 (缺口回补)")
-        else:
-            if candle.high >= self._stop_loss:
-                self._in_position = False
-                return Signal(timestamp_ms=candle.timestamp_ms, side=Side.SHORT,
-                              price=self._stop_loss, reason="止损")
-            if candle.low <= self._take_profit:
-                self._in_position = False
-                return Signal(timestamp_ms=candle.timestamp_ms, side=Side.SHORT,
-                              price=self._take_profit, reason="止盈 (缺口回补)")
+    def _check_exit(self, candle: Candle, cur_atr: float) -> Optional[Signal]:
+        if cur_atr != cur_atr:
+            return None
+        if candle.high > self._best_price:
+            self._best_price = candle.high
+            self._trailing_stop = max(self._trailing_stop, self._best_price - cur_atr * self.trail_atr_mult)
+        if candle.low <= self._trailing_stop:
+            self._in_position = False
+            return Signal(timestamp_ms=candle.timestamp_ms, side=Side.LONG,
+                          price=max(self._trailing_stop, candle.low), reason="追踪止损出场")
         return None
